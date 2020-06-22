@@ -55,7 +55,7 @@ class VideoParser:
         while self._video_data:
             frame, timestamp, _ = self._get_completed_image()
             if frame:
-                completed_images.append((timestamp, (MessageType.VIDEO, self._concat_image(self._video_data[frame])[0])))
+                completed_images.append((timestamp, self._concat_image(self._video_data[frame])[0]))
                 self._video_data.pop(frame)
             else:
                 break

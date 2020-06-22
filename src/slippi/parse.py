@@ -31,7 +31,6 @@ def _parse_event(event_stream, payload_sizes):
 
     try: event_type = EventType(code)
     except ValueError: event_type = None
-
     if event_type is EventType.GAME_START:
         event = Start._parse(stream)
     elif event_type is EventType.FRAME_PRE:

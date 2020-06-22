@@ -21,10 +21,13 @@ from enum import Enum
 from io import BytesIO
 from PIL import Image, ImageFont, ImageDraw
 
+from slippi.event import Frame, Start, End
+
 class CommandType(Enum):
 
-    UPDATE = 0,
-    SHUTDOWN = 1
+    VIDEO_UPDATE    = 0,
+    SLIPPI_UPDATE   = 1,
+    SHUTDOWN        = 2
 
 class StreamFrame:
 
@@ -32,6 +35,11 @@ class StreamFrame:
         self._video_queue_in = video_queue_in
         self._video_queue_out = video_queue_out
 
+        # Slippi viewable data
+        self.
+
+
+    def _extract_
 
     def _on_close(self):
         self._video_queue_out.put_nowait((CommandType.SHUTDOWN, None))
@@ -50,9 +58,24 @@ class StreamFrame:
     def collect_frame(self):
         try:
             payload = self._video_queue_in.get_nowait()
-            if payload[0] == CommandType.UPDATE:
+            if payload[0] == CommandType.VIDEO_UPDATE:
                 self.draw_frame(np.array(Image.open(BytesIO(payload[1]))))
                 self.canvas.draw()
+            if payload[0] == CommandType.SLIPPI_UPDATE:
+                event = payload[1]
+                # TODO: Extract and store specific information for the display. 
+                #       Debating on making a utils toolset to get map, etc.
+                #       Another idea is to have some sort of singleton that has an updater
+                #       which updates with the slippi data coming in. Then this would have
+                #       a ton get getters for specific info.
+                if isinstance(event, Start):
+                    print(event)
+                elif isinstance(event, Frame.Event.Type.PRE):
+                    pass
+                elif isinstance(event, Frame.Event.Type.POST):
+                    pass
+                elif isinstance(event, End):
+                    pass
             elif payload[0] == CommandType.SHUTDOWN:
                 self.window.destroy()
         except queue.Empty:
