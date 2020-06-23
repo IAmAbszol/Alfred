@@ -61,8 +61,9 @@ class NetworkReceiver(ThreadRunner):
                 data_str, _ = self._video_socket.recvfrom((2**16) - 1)
                 if video_parser.update(data_str):
                     if self._is_network_ready():
-                        #self._network_in.send((MessageType.VIDEO, video_parser.get_completed_images()[0]))
-                        pass
+                        video_captures = video_parser.get_completed_images()
+                        if video_captures:
+                            self._network_in.send((MessageType.VIDEO, video_captures[0]))
             except socket.timeout:
                 logging.warning('Failed to receive any data from video socket.')    
             except OSError:

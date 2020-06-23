@@ -36,10 +36,10 @@ class StreamFrame:
         self._video_queue_out = video_queue_out
 
         # Slippi viewable data
-        self.
+        #self.
 
 
-    def _extract_
+    #def _extract_
 
     def _on_close(self):
         self._video_queue_out.put_nowait((CommandType.SHUTDOWN, None))

@@ -33,9 +33,9 @@ class ConfigurationLoader:
     # TODO: Update _verify as new required items are added
     def _verify(self):
         ret = True
-        ret &= 'display' in self._configuration.keys() and 'queue_size' in self._configuration['display'].keys()
-        ret &= 'ports' in self._configuration.keys() and len(list(set(['controller', 'slippi', 'video']) & set(self._configuration['ports'].keys()))) == 3
-        ret &= 'slippi' in self._configuration.keys() and bool(self._configuration['slippi'])
+        ret &= 'display' in self._instance._configuration.keys() and 'queue_size' in self._instance._configuration['display'].keys()
+        ret &= 'ports' in self._instance._configuration.keys() and len(list(set(['controller', 'slippi', 'video']) & set(self._instance._configuration['ports'].keys()))) == 3
+        ret &= 'slippi' in self._instance._configuration.keys() and bool(self._instance._configuration['slippi'])
         return ret
 
     def get_config(self):
@@ -48,9 +48,9 @@ class ConfigurationLoader:
     def load(self):
         if os.path.exists(self._instance._config_file) and os.path.isfile(self._instance._config_file):
             with open(self._instance._config_file, 'r') as stream:
-                self._configuration = yaml.safe_load(stream)
+                self._instance._configuration = yaml.safe_load(stream)
         if self._verify():
-            return self._configuration
+            return self._instance._configuration
         else:
             logging.error('Invalid configuration passed. Fresh config file might be required.')
             exit(1)
