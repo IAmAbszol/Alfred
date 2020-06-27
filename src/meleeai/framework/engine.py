@@ -7,11 +7,11 @@ import sys
 import time
 import threading
 
-from multiprocessing import Process, Queue, Pipe
+from multiprocessing import Process, Queue
 
 from meleeai.framework.configuration import ConfigurationLoader
 from meleeai.framework.display import StreamFrame, CommandType
-from meleeai.framework.network import NetworkCommunication
+from meleeai.framework.network.receiver import NetworkReceiver
 from meleeai.utils.message_type import MessageType
 
 class Engine:
@@ -33,8 +33,7 @@ class Engine:
         self._configuration = self._configuration_loader.load()
 
         # Objects used by the engine for network communication
-        self._network_pipe_out, self._network_pipe_in = Pipe()
-        self._network_comms     = NetworkCommunication(self._network_pipe_in, inbound_ports=self._configuration['ports'], outbound_port=55082)
+        self._network_receiver  = NetworkReceiver(configured_ports=self._configuration['ports'])
 
         # Visual display
         self._display_queue_in  = Queue()
@@ -46,7 +45,7 @@ class Engine:
         self._training_engine   = None
 
     def __enter__(self):
-        self._network_comms.run()
+        # TODO: Place any code inside this body on object creation, works on calls to 'with'
         return self
 
     def __exit__(self, exec_type, exec_value, traceback):
@@ -55,8 +54,6 @@ class Engine:
         if self._display_process:
             self._display_process.join()
 
-        # TODO: There seems to be some type of lag delay where if I were to sleep for x amount of time, it'd pass
-        #       else WinApi error is thrown.
         while not self._display_queue_in.empty():
             self._display_queue_in.get(timeout=.001)
         self._display_queue_in.close()
@@ -67,11 +64,7 @@ class Engine:
         self._display_queue_out.close()
         self._display_queue_out.join_thread()
 
-        if self._network_pipe_out.poll():
-            self._network_pipe_out.recv()
-        self._network_pipe_out.close()
-
-        self._network_comms.stop()
+        self._network_receiver.stop()
 
     def main(self):
         if self._display:
@@ -80,8 +73,8 @@ class Engine:
 
         start = datetime.datetime.utcnow()
         while (datetime.datetime.utcnow() - start).total_seconds() < 15:
-            if self._network_pipe_out.poll():
-                message_type, (_, data) = self._network_pipe_out.recv()
+            for payload in self._network_receiver.collect():
+                message_type, (_, data) = payload
                 if message_type == MessageType.VIDEO:
                     if self._display_queue_in.qsize() <= self._configuration['display']['queue_size']:
                         self._display_queue_in.put_nowait((CommandType.VIDEO_UPDATE, data))
