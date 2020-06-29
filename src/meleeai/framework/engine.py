@@ -11,9 +11,11 @@ from multiprocessing import Process, Queue
 
 from meleeai.framework.configuration import ConfigurationLoader
 from meleeai.framework.display import StreamFrame, CommandType
+from meleeai.framework.manager import Manager
 from meleeai.framework.network.receiver import NetworkReceiver
 from meleeai.utils.message_type import MessageType
 
+# TODO: Engine should exist in its own thread, controlled by a constant tick rate; regardless of processing time.
 class Engine:
 
     def __init__(self, config='alfred_config.yml', predict=False, display=False, train=False):
@@ -40,6 +42,9 @@ class Engine:
         self._display_queue_out = Queue()
         self._display_class     = StreamFrame(self._display_queue_in, self._display_queue_out)
         self._display_process   = None
+
+        # Data Manager/Batcher & Algorithm
+        self._data_manager = Manager()
 
         self._prediction_engine = None
         self._training_engine   = None
@@ -70,11 +75,14 @@ class Engine:
         if self._display:
             self._display_process = Process(target=self._display_class.run)
             self._display_process.start()
-
+        from slippi.event import Frame, Start, End
+        from collections import defaultdict
+        counter = defaultdict(int)
         start = datetime.datetime.utcnow()
-        while (datetime.datetime.utcnow() - start).total_seconds() < 15:
+        while (datetime.datetime.utcnow() - start).total_seconds() < 5:
             for payload in self._network_receiver.collect():
-                message_type, (_, data) = payload
+                message_type, (timestamp, data) = payload
+                # Display
                 if message_type == MessageType.VIDEO:
                     if self._display_queue_in.qsize() <= self._configuration['display']['queue_size']:
                         self._display_queue_in.put_nowait((CommandType.VIDEO_UPDATE, data))
@@ -82,6 +90,12 @@ class Engine:
                 if message_type == MessageType.SLIPPI:
                     if self._display_queue_in.qsize() <= self._configuration['display']['queue_size']:
                         self._display_queue_in.put_nowait((CommandType.SLIPPI_UPDATE, data))
+
+                # Push the data retrieved to the manager
+                self._data_manager.update(message_type=message_type, data=data, timestamp=timestamp)
+
+            # Grab any available data from the manager
+            retx = self._data_manager.retrieve()
 
             # Handle the _display_queue_out
             if self._display_queue_out.qsize() > 0:
@@ -91,6 +105,7 @@ class Engine:
                         self._display = False
                 except queue.Empty:
                     pass
+        print(counter)
         if self._display:
             logging.info('SENDING shutdown command')
             self._display_queue_in.put_nowait((CommandType.SHUTDOWN, None))

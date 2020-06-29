@@ -18,6 +18,11 @@ class VideoParser:
         self._video_data = {}
 
     def _concat_image(self, frame_segments):
+        """
+        Combines all the frame segments together per image.
+        :param frame_segments: List of segments retrieved corresponding to index.
+        :return: Array of data.
+        """
         raw = None
         total_bs = 0
         for data in frame_segments:
@@ -45,11 +50,14 @@ class VideoParser:
         return closest_frame, closest_time, time_difference
 
     def clear(self):
+        """
+        Clears the video cache.
+        """
         self._video_data.clear()
 
     def get_completed_images(self):
         """
-        Gets all the
+        Gets all the available frames completed.
         """
         completed_images = []
         while self._video_data:
@@ -62,13 +70,17 @@ class VideoParser:
         return completed_images
 
     def update(self, data_str):
+        """
+        Adds to the current buffer of video data.
+        :param data_str: Binary string of data.
+        """
         # Parse the message
         ret = True
         if len(data_str) < self.HEADER_SIZE:
             logging.error('Data string provided is too small for header to parse.')
             ret = False
-        (frame, segment, total_segments, width, height, block_size, _, seconds, microseconds)= self.HEADER_UNPACK(data_str[:30])
-        if block_size > len(data_str[30:]):
+        (frame, segment, total_segments, width, height, block_size, _, seconds, microseconds)= self.HEADER_UNPACK(data_str[:self.HEADER_SIZE])
+        if block_size > len(data_str[self.HEADER_SIZE:]):
             logging.error('Data string provided is too small for image to be parsed.')
             ret = False
 
@@ -81,10 +93,10 @@ class VideoParser:
             'block_size' : block_size,
             'width' : width,
             'height' : height,
-            'timestamp' : int(f'{seconds}{microseconds}'),
-            'raw' : list(struct.unpack('>' + 'B' * block_size, data_str[30:])) # big endian? 
+            'timestamp' : float(f'{seconds}{microseconds}'),
+            'raw' : list(struct.unpack('>' + 'B' * block_size, data_str[self.HEADER_SIZE:])) # big endian? 
         })
-
+        
         # Take dictionary, if threshold is met, delete oldest key
         if len(list(self._video_data.keys())) > self.MAP_SIZE:
             self._video_data.pop(min(list(self._video_data.keys())))

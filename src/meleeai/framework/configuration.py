@@ -23,6 +23,10 @@ class ConfigurationLoader:
                 'slippi': {
                     # Start, Pre, Post, End
                     54: 418, 55: 64, 56: 52, 57: 2
+                },
+                'alfred': {
+                    # (ms)
+                    'tick_rate': .016
                 }
             }
 

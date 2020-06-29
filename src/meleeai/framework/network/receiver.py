@@ -7,8 +7,8 @@ from concurrent import futures
 from io import BytesIO
 
 from meleeai.utils.message_type import MessageType
-from meleeai.utils.video_parser import VideoParser
 from meleeai.utils.slippi_parser import SlippiParser
+from meleeai.utils.video_parser import VideoParser
 
 class NetworkReceiver():
 
@@ -44,10 +44,10 @@ class NetworkReceiver():
 
     def _listen_slippi(self):
         try:
-            data_str, _ = self._slippi_socket.recvfrom(512)
-            event       = self._slippi_parser.parse_bin(BytesIO(data_str[4:]))
-            if event:
-                return (MessageType.SLIPPI, (_, event))
+            data_str, _         = self._slippi_socket.recvfrom(1024)
+            events    = self._slippi_parser.parse_bin(BytesIO(data_str[0:]))
+            if events:
+                return [(MessageType.SLIPPI, time_event) for time_event in events]
         except socket.timeout:
             logging.warning('Failed to receive any data from slippi socket.')        
         except OSError:
@@ -68,13 +68,16 @@ class NetworkReceiver():
     def collect(self):
         for name, fut in self._async_dict.items():
             if fut and fut.done():
-                if fut.result():
-                    yield fut.result()
+                result = fut.result()
+                if result:
+                    if not isinstance(result, list):
+                        result = [result]
+                    for result_item in result:
+                        yield result_item
                 self._async_dict[name] = self._executor.submit(self._func_dict[name])
             elif not fut:
                 self._async_dict[name] = self._executor.submit(self._func_dict[name])
                 
-
     def stop(self):
         logging.info('Stopped Network Receiver, awaiting async completion.')
         for exc_fut in self._async_dict.values():

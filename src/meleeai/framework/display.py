@@ -68,6 +68,7 @@ class StreamFrame:
                 #       Another idea is to have some sort of singleton that has an updater
                 #       which updates with the slippi data coming in. Then this would have
                 #       a ton get getters for specific info.
+                """
                 if isinstance(event, Start):
                     print(event)
                 elif isinstance(event, Frame.Event.Type.PRE):
@@ -76,6 +77,7 @@ class StreamFrame:
                     pass
                 elif isinstance(event, End):
                     pass
+                """
             elif payload[0] == CommandType.SHUTDOWN:
                 self.window.destroy()
         except queue.Empty:

@@ -2,7 +2,6 @@ import io
 import logging
 import os
 import pickle
-import struct
 
 from meleeai.framework.configuration import ConfigurationLoader
 from slippi.event import Frame, Start, End
@@ -15,14 +14,20 @@ class SlippiParser:
     def __init__(self):
         self.DEFAULT_PAYLOAD_SIZES = ConfigurationLoader().get_config()['slippi']
 
+        self._SKIP = 12
+
     def parse_bin(self, stream):
         """
         Parses the Slippi data using hohav's Slippi parser into events.
         :param stream: Input stream off the socket.
         :return: Slippi Event
         """
-        event   = None
+        events = []
+        
         cont    = True
+        end_idx = stream.getbuffer().nbytes
+        seconds, microseconds = unpack('II', stream)
+        
         # Preload the payload_sizes to avoid potentially updated slippi data coming in.
         try:
             expect_bytes(b'{U\x03raw[$U#l', stream)
@@ -31,81 +36,37 @@ class SlippiParser:
             logging.info('Slippi payload data has been received, modifying existing table.')
             cont = False
         except Exception:
-            stream.seek(0)
+            stream.seek(self._SKIP)
             pass
-
+        
         # Parse the event and matches it accordingly
-        if cont:
-            try:
-                extracted_event = parse_event(stream, self.DEFAULT_PAYLOAD_SIZES)
-            except Exception:
-                cont = False
-
+        while stream.tell() < end_idx and cont:
             if cont:
-                if isinstance(extracted_event, Start):
-                    event = extracted_event
-                elif isinstance(extracted_event, Frame.Event):
-                    current_frame = Frame(extracted_event.id.frame)
-                    port = current_frame.ports[extracted_event.id.port]
-                    if not port:
-                        port = Frame.Port()
-                        current_frame.ports[extracted_event.id.port] = port
-                    data = port.leader
-                    if extracted_event.type is Frame.Event.Type.PRE:
-                        event = data.Pre(extracted_event.data)
-                    if extracted_event.type is Frame.Event.Type.POST:
-                        event = data.Post(extracted_event.data)
-                elif isinstance(extracted_event, End):
-                    event = extracted_event
-                else:
-                    logging.warning('Malformed Slippi data detected.')
-        return event
+                try:
+                    extracted_event = parse_event(stream, self.DEFAULT_PAYLOAD_SIZES)
+                except Exception:
+                    cont = False
 
-    def parse_file(self, bin_file):
-        if os.path.exists(bin_file):
-            with open(bin_file, 'rb') as fd:
-                pkld_slippi_data = pickle.load(fd)
-                for slippi_data in pkld_slippi_data:
-                    data_io = io.BytesIO(slippi_data[4:])
-
-                    # Preload the payload_sizes to avoid potentially updated slippi data coming in.
-                    try:
-                        expect_bytes(b'{U\x03raw[$U#l', data_io)
-                        (_,) = unpack('l', data_io.read(4))
-                        self.DEFAULT_PAYLOAD_SIZES = parse_event_payloads(data_io)
-                        continue
-                    except Exception:
-                        data_io.seek(0)
-                        pass
-
-                    # Parse the event and match it accordingly
-                    try:
-                        event = parse_event(data_io, self.DEFAULT_PAYLOAD_SIZES)
-                    except Exception:
-                        continue
-
-                    if isinstance(event, Start):
-                        print(event)
-                    elif isinstance(event, Frame.Event):
-                        # TODO: Follow current_frame and how its used to build the event data blob
-                        current_frame = Frame(event.id.frame)
-                        port = current_frame.ports[event.id.port]
+                if cont:
+                    if isinstance(extracted_event, Start):
+                        events.append(float(f'{seconds}{microseconds}'), extracted_event)
+                    elif isinstance(extracted_event, Frame.Event):
+                        current_frame = Frame(extracted_event.id.frame)
+                        port = current_frame.ports[extracted_event.id.port]
                         if not port:
                             port = Frame.Port()
-                            current_frame.ports[event.id.port] = port
+                            current_frame.ports[extracted_event.id.port] = port
                         data = port.leader
-                        if event.type is Frame.Event.Type.PRE:
-                            data._pre = data.Pre(event.data)
-                            print(data._pre)
-                        if event.type is Frame.Event.Type.POST:
-                            data._post = data.Post(event.data)
-                            print(data._post)
-                    elif isinstance(event, End):
-                        print(event)
+                        if extracted_event.type is Frame.Event.Type.PRE:
+                            events.append((float(f'{seconds}{microseconds}'), data.Pre(extracted_event.data)))
+                        if extracted_event.type is Frame.Event.Type.POST:
+                            events.append((float(f'{seconds}{microseconds}'), data.Post(extracted_event.data)))
+                    elif isinstance(extracted_event, End):
+                        events.append((float(f'{seconds}{microseconds}'), extracted_event))
                     else:
-                        print('ERROR!')
-                        continue
+                        logging.warning('Malformed Slippi data detected.')
+                        cont = False
 
-if __name__ == '__main__':
-    slippi = SlippiParser()
-    slippi.parse_file('slippi_in.pkl')
+                    
+
+        return events
