@@ -49,7 +49,7 @@ class SlippiParser:
 
                 if cont:
                     if isinstance(extracted_event, Start):
-                        events.append(float(f'{seconds}{microseconds}'), extracted_event)
+                        events.append((float(f'{seconds}{microseconds}'), extracted_event))
                     elif isinstance(extracted_event, Frame.Event):
                         current_frame = Frame(extracted_event.id.frame)
                         port = current_frame.ports[extracted_event.id.port]
@@ -62,7 +62,7 @@ class SlippiParser:
                         if extracted_event.type is Frame.Event.Type.POST:
                             events.append((float(f'{seconds}{microseconds}'), data.Post(extracted_event.data)))
                     elif isinstance(extracted_event, End):
-                        events.append((float(f'{seconds}{microseconds}'), extracted_event))
+                        events.append((float(f'{seconds}.{microseconds}'), extracted_event))
                     else:
                         logging.warning('Malformed Slippi data detected.')
                         cont = False
