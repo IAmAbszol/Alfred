@@ -24,7 +24,7 @@ class Engine:
         self._predict = predict
         self._display = display
         self._train = train
-        
+
         # Verify at least one functionality is active
         if not any([predict, display, train]):
             logging.error('No arguments provided, exiting.')
@@ -75,9 +75,7 @@ class Engine:
         if self._display:
             self._display_process = Process(target=self._display_class.run)
             self._display_process.start()
-        from slippi.event import Frame, Start, End
-        from collections import defaultdict
-        counter = defaultdict(int)
+
         start = datetime.datetime.utcnow()
         while (datetime.datetime.utcnow() - start).total_seconds() < 5:
             for payload in self._network_receiver.collect():
@@ -95,7 +93,9 @@ class Engine:
                 self._data_manager.update(message_type=message_type, data=data, timestamp=timestamp)
 
             # Grab any available data from the manager
-            retx = self._data_manager.retrieve()
+            #retx = self._data_manager.retrieve()
+            #if retx:
+            #    print(len(retx))
 
             # Handle the _display_queue_out
             if self._display_queue_out.qsize() > 0:
@@ -105,7 +105,6 @@ class Engine:
                         self._display = False
                 except queue.Empty:
                     pass
-        print(counter)
         if self._display:
             logging.info('SENDING shutdown command')
             self._display_queue_in.put_nowait((CommandType.SHUTDOWN, None))

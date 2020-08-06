@@ -1,5 +1,7 @@
 import datetime
 
+from queue import Queue
+
 from meleeai.framework.configuration import ConfigurationLoader
 
 class Manager:
@@ -8,10 +10,22 @@ class Manager:
         """
         Manager class to handle the preparation of training/live data.
         """
+        # Organized the data coming in
         self._bucket                = []
         self._published_bucket      = {}
         self._window_size           = ConfigurationLoader().get_config()['alfred']['tick_rate']
         self._window_start          = None
+
+        # Organized predictions
+        self._predictions_queue     = Queue()
+        self._kalman_filter         = None
+
+    def _release_to_prediction(self):
+        """
+        Retrieves the most recent published bucket, intentions is to feed the predictor.
+        """
+        if self._published_bucket:
+            data = self._published_bucket.pop(min(self._published_bucket.keys()))
 
     def update(self, message_type, data, timestamp):
         """
@@ -30,12 +44,5 @@ class Manager:
                 self._bucket.clear()
         self._bucket.append((message_type, timestamp, data))
 
-    def retrieve(self):
-        """
-        Retrieves any available data from the data manager.
-        :return: List of data.
-        """
-        if self._published_bucket:
-            # TODO: Make this into a one-liner? 
-            bucket_time = min(self._published_bucket.keys())
-            return self._published_bucket.pop(bucket_time)
+    def retrieve_prediction(self):
+        pass

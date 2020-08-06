@@ -47,7 +47,7 @@ if __name__ == '__main__':
       else:
          print('Unsupported Platform: {}, build is terminating.'.format(TARGET_PLATFORM))
 
-   COMMANDS.append(('%s/Scripts/activate.bat; cd docs/; make.bat html; cd ..' % ENV_NAME))
+   #COMMANDS.append(('%s/Scripts/activate.bat; cd docs/; make.bat html; cd ..' % ENV_NAME))
 
    for command in COMMANDS:
       if isinstance(command, str):

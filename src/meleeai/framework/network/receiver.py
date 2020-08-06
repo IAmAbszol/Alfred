@@ -19,17 +19,17 @@ class NetworkReceiver():
         """
         # Setup ThreadExecutor
         self._executor = futures.ThreadPoolExecutor(max_workers=2)
-        
+
         # Setup slippi
         self._slippi_parser     = SlippiParser()
         self._slippi_socket     = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._slippi_socket.bind(('localhost', configured_ports['slippi']))
+        self._slippi_socket.bind(('', configured_ports['slippi']))
         self._slippi_socket.settimeout(1)
 
         # Setup video port
         self._video_parser      = VideoParser()
         self._video_socket      = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._video_socket.bind(('localhost', configured_ports['video']))
+        self._video_socket.bind(('', configured_ports['video']))
         self._video_socket.settimeout(1)
 
         self._async_dict        = {
@@ -45,11 +45,11 @@ class NetworkReceiver():
     def _listen_slippi(self):
         try:
             data_str, _         = self._slippi_socket.recvfrom(1024)
-            events    = self._slippi_parser.parse_bin(BytesIO(data_str[0:]))
+            events    = self._slippi_parser.parse_bin(BytesIO(data_str))
             if events:
                 return [(MessageType.SLIPPI, time_event) for time_event in events]
         except socket.timeout:
-            logging.warning('Failed to receive any data from slippi socket.')        
+            logging.warning('Failed to receive any data from slippi socket.')
         except OSError:
             logging.warning('Slippi receiver pipeline has been closed')
 
@@ -61,7 +61,7 @@ class NetworkReceiver():
                 if video_captures:
                     return (MessageType.VIDEO, video_captures[0])
         except socket.timeout:
-            logging.warning('Failed to receive any data from video socket.')    
+            logging.warning('Failed to receive any data from video socket.')
         except OSError:
             logging.warning('Video receiver pipeline has been closed')
 
@@ -77,7 +77,7 @@ class NetworkReceiver():
                 self._async_dict[name] = self._executor.submit(self._func_dict[name])
             elif not fut:
                 self._async_dict[name] = self._executor.submit(self._func_dict[name])
-                
+
     def stop(self):
         logging.info('Stopped Network Receiver, awaiting async completion.')
         for exc_fut in self._async_dict.values():

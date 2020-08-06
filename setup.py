@@ -1,23 +1,23 @@
 import os
 from setuptools import find_packages, setup
+from typing import Iterator
 
-def package_files(package_dir):
-	root_pkg_dir = os.path.join(os.path.split(os.path.realpath(__file__))[0], 'src', package_dir)
-	print(root_pkg_dir)
-	paths = []
-	for root, _, filenames in os.walk(root_pkg_dir):
-		for filename in filenames:
-			if os.path.splitext(filename)[1] != '.py':
-				paths.append(os.path.join('..', root, filename))
-	return paths
+def package_files(package_dir: str) -> Iterator[str]:
+    """Gathers a list of non-.py file paths in the given package directory.
+    :param package_dir: Name of directory within this package to search.
+    :return: Iterator of file paths.
+    """
+    root_pkg_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                'src', 'meleeai', package_dir)
+    for root, _, file_names in os.walk(root_pkg_dir):
+        for file_name in file_names:
+            if os.path.splitext(file_name)[1] not in ('.py', '.pyc'):
+                yield os.path.join('..', root, file_name)
 
-dirs = ['slippi', 'meleeai']
 
-EXTRA_FILES = []
-for d in dirs:
-	EXTRA_FILES += package_files(d)
-print(EXTRA_FILES)
-	
+EXTRA_FILES = [*package_files('.')]
+print(f'Found paths: {EXTRA_FILES}')
+
 setup(
     author='Abszol',
     author_email='kdarling95@yahoo.com',
@@ -34,12 +34,15 @@ setup(
         'matplotlib>=3.2.1',
         'numpy>=1.18.2',
         'pillow>=7.1.2',
+        'pykalman==0.9.5',
         'py-ubjson>=0.15.0',
         'PyYaml>=5.3.1',
+        'scipy>=1.5.1',
+        'Sphinx==3.1.2',
         'termcolor>=1.1.0',
         'tk>=0.1.0'
     ],
-    python_requires='~=3.6',
+    python_requires='>=3.6, <3.8',
     url='',
     entry_points={
         'console_scripts':

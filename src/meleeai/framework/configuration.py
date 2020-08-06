@@ -3,12 +3,15 @@ import os
 import yaml
 
 class ConfigurationLoader:
-
+    """ConfigurationLoader"""
     _instance = None
 
     class _SingletonConfigurationLoader:
-
+        """SingletonConfigurationLoader"""
         def __init__(self, config_file):
+            """Initializes the singleton configuration class
+            :param config_file: Configuration file handled by save/load functionality.
+            """
             # TODO: Update configuration as the program grows
             self._config_file = config_file
             self._configuration = {
@@ -26,11 +29,17 @@ class ConfigurationLoader:
                 },
                 'alfred': {
                     # (ms)
-                    'tick_rate': .016
+                    'tick_rate': .016,
+                    'model': {
+                        'alfred_port': 1,
+                        'alfred_character': 'falcon',
+                        'player_port': 4
+                    }
                 }
             }
 
     def __init__(self, config_file='alfred_config.yml'):
+        """Initializes the ConfigurationLoader instance"""
         if not ConfigurationLoader._instance:
             ConfigurationLoader._instance = ConfigurationLoader._SingletonConfigurationLoader(config_file)
 

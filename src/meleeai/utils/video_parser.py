@@ -8,8 +8,9 @@ from io import BytesIO
 from meleeai.utils.message_type import MessageType
 
 class VideoParser:
-
+    """VideoParser"""
     def __init__(self, MAX_SIZE=10):
+        """Initializes the parsing module for Video data"""
         self.HEADER             = '>I B B 2i 4I'
         self.HEADER_SIZE        = struct.calcsize(self.HEADER)
         self.HEADER_UNPACK      = struct.Struct(self.HEADER).unpack
@@ -18,8 +19,7 @@ class VideoParser:
         self._video_data = {}
 
     def _concat_image(self, frame_segments):
-        """
-        Combines all the frame segments together per image.
+        """Combines all the frame segments together per image.
         :param frame_segments: List of segments retrieved corresponding to index.
         :return: Array of data.
         """
@@ -35,11 +35,10 @@ class VideoParser:
 
     # TODO: Remove abs() if its desired that left-hand side is more favorable than right-hand side.
     def _get_completed_image(self, timestamp=0):
-        """
-        Gets the image closest to the provided timestamp.
+        """Gets the image closest to the provided timestamp.
         :param timestamp: Timestamp of frames. Keep relative to data rather than system as Windows Dolphin
                           time is currently bugged.
-        :return: frame, timestamp, min_tim
+        :return: frame, timestamp, min_time
         """
         closest_frame, closest_time, time_difference = None, None, sys.maxsize
         for frame, list_data in self._video_data.items():
@@ -50,14 +49,12 @@ class VideoParser:
         return closest_frame, closest_time, time_difference
 
     def clear(self):
-        """
-        Clears the video cache.
+        """Clears the video cache.
         """
         self._video_data.clear()
 
     def get_completed_images(self):
-        """
-        Gets all the available frames completed.
+        """Gets all the available frames completed.
         """
         completed_images = []
         while self._video_data:
@@ -70,8 +67,7 @@ class VideoParser:
         return completed_images
 
     def update(self, data_str):
-        """
-        Adds to the current buffer of video data.
+        """Adds to the current buffer of video data.
         :param data_str: Binary string of data.
         """
         # Parse the message
@@ -93,10 +89,10 @@ class VideoParser:
             'block_size' : block_size,
             'width' : width,
             'height' : height,
-            'timestamp' : float(f'{seconds}{microseconds}'),
-            'raw' : list(struct.unpack('>' + 'B' * block_size, data_str[self.HEADER_SIZE:])) # big endian? 
+            'timestamp' : float(f'{seconds}.{microseconds}'),
+            'raw' : list(struct.unpack('>' + 'B' * block_size, data_str[self.HEADER_SIZE:])) # big endian?
         })
-        
+
         # Take dictionary, if threshold is met, delete oldest key
         if len(list(self._video_data.keys())) > self.MAP_SIZE:
             self._video_data.pop(min(list(self._video_data.keys())))
