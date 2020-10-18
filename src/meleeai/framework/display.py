@@ -3,99 +3,131 @@
     process is queue'd off. This process is connected via Engine's multiprocessing.queue.
 """
 
+import logging
 import numpy as np
 import queue
 import sys
 import time
 
-import matplotlib
-matplotlib.use('TkAgg')
-
-from matplotlib import animation
-from matplotlib import ticker
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from matplotlib.figure import Figure
 from tkinter import * # TODO: A sin has been committed, fix later
+from slippi.event import Buttons, Frame, Start, End
 
 from enum import Enum
 from io import BytesIO
-from PIL import Image, ImageFont, ImageDraw
+from PIL import Image, ImageFont, ImageDraw, ImageTk
+from tkinter import Toplevel, Label, Tk
 
-from slippi.event import Frame, Start, End
+from meleeai.textures.draw_controller import ControllerLayout
+from meleeai.textures.texture_loader import get_textures
+from meleeai.utils.constants import GC_PORTS
+from meleeai.utils.message_type import MessageType
 
-class CommandType(Enum):
-
-    VIDEO_UPDATE    = 0,
-    SLIPPI_UPDATE   = 1,
-    SHUTDOWN        = 2
 
 class StreamFrame:
-
+    """StreamFrame"""
     def __init__(self, video_queue_in, video_queue_out):
+        """Initializes the StreamFrame object
+        :param video_queue_in: Commands such as Video, Slippi, and Shutdown are passed through to here
+        :param video_queue_out: Commands such as Shutdown to notify the parent caller
+        """
+        self.controller_drawer = ControllerLayout()
+
         self._video_queue_in = video_queue_in
         self._video_queue_out = video_queue_out
 
-        # Slippi viewable data
-        #self.
-
-
-    #def _extract_
+        self._spawned_controllers = {}
 
     def _on_close(self):
-        self._video_queue_out.put_nowait((CommandType.SHUTDOWN, None))
+        """Close this instance for process to parent"""
+        self._video_queue_out.put_nowait((MessageType.SHUTDOWN, None))
         self.window.destroy()
-    
+
 
     def initialize(self):
+        """Initializes the view for StreamFrame"""
         self.window.protocol('WM_DELETE_WINDOW', self._on_close)
-        self.figure = Figure(figsize=(5, 4), dpi=100)
-        self.ax = self.figure.add_subplot(111)
-        self.canvas = FigureCanvasTkAgg(self.figure, master=self.window)
-        self.canvas.draw()
-        self.canvas._tkcanvas.pack(side=TOP, fill=BOTH, expand=True)
 
+        self.image_label = Label(master=self.window)
+        self.image_label.pack(side="bottom", fill="both", expand="yes")
 
-    def collect_frame(self):
+        for port in range(GC_PORTS):
+            self._spawned_controllers[port] = Label(master=self.window)
+            self._spawned_controllers[port].pack(side="bottom", fill="both", expand="no")
+
+    def collect(self):
+        """Collects data off the video_queue_in and handles it appropriately"""
         try:
             payload = self._video_queue_in.get_nowait()
-            if payload[0] == CommandType.VIDEO_UPDATE:
-                self.draw_frame(np.array(Image.open(BytesIO(payload[1]))))
-                self.canvas.draw()
-            if payload[0] == CommandType.SLIPPI_UPDATE:
+            if payload[0] == MessageType.VIDEO:
+                #video_image = ImageTk.PhotoImage(Image.open(BytesIO(payload[1])))
+                #self.image_label.configure(image=video_image)
+                #self.image_label.image = video_image
+                pass
+            if payload[0] == MessageType.SLIPPI:
                 event = payload[1]
-                # TODO: Extract and store specific information for the display. 
-                #       Debating on making a utils toolset to get map, etc.
-                #       Another idea is to have some sort of singleton that has an updater
-                #       which updates with the slippi data coming in. Then this would have
-                #       a ton get getters for specific info.
-                """
-                if isinstance(event, Start):
-                    print(event)
-                elif isinstance(event, Frame.Event.Type.PRE):
-                    pass
-                elif isinstance(event, Frame.Event.Type.POST):
-                    pass
-                elif isinstance(event, End):
-                    pass
-                """
-            elif payload[0] == CommandType.SHUTDOWN:
+                # Run through the available ports
+                # TODO: Change to point at the tuples port
+                for port in range(GC_PORTS):
+                    if port == 0:
+                        #if isinstance(event, tuple):
+                        #    print(event[0])
+                        canvas = self.controller_drawer.draw_controller_overlay(event, port)
+                        if canvas:
+                            controller_image = ImageTk.PhotoImage(canvas)
+                            self._spawned_controllers[port].configure(image=controller_image)
+                            self._spawned_controllers[port].image = controller_image
+            elif payload[0] == MessageType.SHUTDOWN:
                 self.window.destroy()
         except queue.Empty:
             pass
-        self.window.after(1, self.collect_frame)
+        except TclError:
+            self._on_close()
+        except Exception as e:
+            logging.error(e)
 
-
-    def draw_frame(self, image):
-        if not hasattr(self, 'stream_image'):
-            self.stream_image = self.ax.imshow(image)
-        else:                
-            self.stream_image.set_data(image)
-
-    def run(self):
-        self.window = Tk()
-        self.window.title('Stream')
-        self.initialize()
-        self.collect_frame()
         self.window.update()
-        self.window.deiconify()
+        self.window.after(1, self.collect)
+
+
+    def setup(self):
+        """Setup for StreamFrame"""
+        self.window = Tk()
+        self.window.title('Alfred Display')
+        self.initialize()
+        self.collect()
         self.window.mainloop()
+
+
+if __name__ == '__main__':
+    """
+    cd = ControllerLayout()
+
+    import time
+    from meleeai.utils.slippi_parser import SlippiParser
+    slippi_parser = SlippiParser()
+    events = slippi_parser.parse_bin('Game.slp', network=False)
+
+    from slippi.event import Buttons, Frame, Start, End
+    for idx, event in enumerate(events):
+        canvas = cd.draw_controller_overlay(event, 0)
+        if canvas:
+            canvas.save('D:\\Documents\\Projects\\MeleeAI\\src\\meleeai\\textures\\tmp\\{}.png'.format(idx), 'PNG')
+            exit(0)
+    """
+    import time
+    import threading
+    from meleeai.utils.slippi_parser import SlippiParser
+    slippi_parser = SlippiParser()
+    events = slippi_parser.parse_bin('Game.slp', network=False)
+    video_queue_in = queue.Queue()
+    video_queue_out = queue.Queue()
+    print(len(events))
+    def thread_func():
+        for (timestamp, event) in events:
+            video_queue_in.put((MessageType.SLIPPI, event))
+
+    tf = threading.Thread(target=thread_func)
+    tf.start()
+    tf.join()
+    sf = StreamFrame(video_queue_in, video_queue_out)
+    sf.setup()

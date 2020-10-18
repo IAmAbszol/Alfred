@@ -45,6 +45,7 @@ class ConfigurationLoader:
 
     # TODO: Update _verify as new required items are added
     def _verify(self):
+        """Verifies the integrity of the configuration file passed through"""
         ret = True
         ret &= 'display' in self._instance._configuration.keys() and 'queue_size' in self._instance._configuration['display'].keys()
         ret &= 'ports' in self._instance._configuration.keys() and len(list(set(['controller', 'slippi', 'video']) & set(self._instance._configuration['ports'].keys()))) == 3
@@ -52,13 +53,20 @@ class ConfigurationLoader:
         return ret
 
     def get_config(self):
+        """Gets the current configuration of the system"""
         return self._instance._configuration
 
     def save(self, configuration=None):
+        """Saves the configuration that's currently operating
+        :param configuration: Configuration file.
+        """
         with open(self._instance._config_file, 'w') as stream:
             yaml.dump(self._instance._configuration if not configuration else configuration, stream, default_flow_style=False)
 
     def load(self):
+        """Loads the configuration into the system
+        :return: Configuration instance or early exit (Not advised)
+        """
         if os.path.exists(self._instance._config_file) and os.path.isfile(self._instance._config_file):
             with open(self._instance._config_file, 'r') as stream:
                 self._instance._configuration = yaml.safe_load(stream)

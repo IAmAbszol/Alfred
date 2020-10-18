@@ -1,5 +1,4 @@
 import datetime
-import heapq
 import logging
 import os
 import queue
@@ -10,15 +9,21 @@ import threading
 from multiprocessing import Process, Queue
 
 from meleeai.framework.configuration import ConfigurationLoader
-from meleeai.framework.display import StreamFrame, CommandType
+from meleeai.framework.display import StreamFrame
 from meleeai.framework.manager import Manager
 from meleeai.framework.network.receiver import NetworkReceiver
 from meleeai.utils.message_type import MessageType
 
 # TODO: Engine should exist in its own thread, controlled by a constant tick rate; regardless of processing time.
 class Engine:
-
+    """Engine"""
     def __init__(self, config='alfred_config.yml', predict=False, display=False, train=False):
+        """Initializes Alfred's Engine
+        :param config: Configuration file to load
+        :param predict: Runs the prediction engine which is sent to the Dolphin instance via controller state
+        :param display: Displays Alfred's video feed and slippi data used for correlation
+        :param train: Trains Alfred's predictive model
+        """
         # Global fields
         self._configuration = None
         self._predict = predict
@@ -26,9 +31,9 @@ class Engine:
         self._train = train
 
         # Verify at least one functionality is active
-        if not any([predict, display, train]):
-            logging.error('No arguments provided, exiting.')
-            exit(1)
+        #if not any([predict, display, train]):
+        #    logging.error('No arguments provided, exiting.')
+        #    exit(1)
 
         # Load the Alfred configuration
         self._configuration_loader = ConfigurationLoader(config_file=config)
@@ -48,6 +53,9 @@ class Engine:
 
         self._prediction_engine = None
         self._training_engine   = None
+
+        self._total = 0
+        self._avg = 0
 
     def __enter__(self):
         # TODO: Place any code inside this body on object creation, works on calls to 'with'
@@ -72,22 +80,25 @@ class Engine:
         self._network_receiver.stop()
 
     def main(self):
+        """Main instance for Alfred, used to communicate all processes together"""
         if self._display:
-            self._display_process = Process(target=self._display_class.run)
+            self._display_process = Process(target=self._display_class.setup)
             self._display_process.start()
 
         start = datetime.datetime.utcnow()
-        while (datetime.datetime.utcnow() - start).total_seconds() < 5:
+        while (datetime.datetime.utcnow() - start).total_seconds() < 30:
+            display_queue_open = self._display_queue_in.qsize() <= self._configuration['display']['queue_size']
             for payload in self._network_receiver.collect():
                 message_type, (timestamp, data) = payload
                 # Display
-                if message_type == MessageType.VIDEO:
-                    if self._display_queue_in.qsize() <= self._configuration['display']['queue_size']:
-                        self._display_queue_in.put_nowait((CommandType.VIDEO_UPDATE, data))
+                if self._display:
+                    if message_type == MessageType.VIDEO:
+                        if display_queue_open:
+                            self._display_queue_in.put_nowait((MessageType.VIDEO, data))
 
-                if message_type == MessageType.SLIPPI:
-                    if self._display_queue_in.qsize() <= self._configuration['display']['queue_size']:
-                        self._display_queue_in.put_nowait((CommandType.SLIPPI_UPDATE, data))
+                    if message_type == MessageType.SLIPPI:
+                        if display_queue_open:
+                            self._display_queue_in.put_nowait((MessageType.SLIPPI, data))
 
                 # Push the data retrieved to the manager
                 self._data_manager.update(message_type=message_type, data=data, timestamp=timestamp)
@@ -101,10 +112,11 @@ class Engine:
             if self._display_queue_out.qsize() > 0:
                 try:
                     payload = self._display_queue_out.get_nowait()
-                    if payload[0] == CommandType.SHUTDOWN:
+                    if payload[0] == MessageType.SHUTDOWN:
                         self._display = False
                 except queue.Empty:
                     pass
+
         if self._display:
             logging.info('SENDING shutdown command')
-            self._display_queue_in.put_nowait((CommandType.SHUTDOWN, None))
+            self._display_queue_in.put_nowait((MessageType.SHUTDOWN, None))

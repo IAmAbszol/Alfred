@@ -5,10 +5,9 @@ from queue import Queue
 from meleeai.framework.configuration import ConfigurationLoader
 
 class Manager:
-
+    """Manager"""
     def __init__(self):
-        """
-        Manager class to handle the preparation of training/live data.
+        """Manager class to handle the preparation of training/live data
         """
         # Organized the data coming in
         self._bucket                = []
@@ -21,18 +20,16 @@ class Manager:
         self._kalman_filter         = None
 
     def _release_to_prediction(self):
-        """
-        Retrieves the most recent published bucket, intentions is to feed the predictor.
+        """Retrieves the most recent published bucket, intentions is to feed the predictor
         """
         if self._published_bucket:
             data = self._published_bucket.pop(min(self._published_bucket.keys()))
 
     def update(self, message_type, data, timestamp):
-        """
-        Updates the Manager with the latest data, deploying data if need be.
-        :param message_type: Type of message associated with this update.
-        :param data: Payload data, differentiates slightly between message_types.
-        :param timestamp: Timestamp associated with the update.
+        """Updates the Manager with the latest data, deploying data if need be
+        :param message_type: Type of message associated with this update
+        :param data: Payload data, differentiates slightly between message_types
+        :param timestamp: Timestamp associated with the update
         """
         if self._window_start is None:
             self._window_start = timestamp
