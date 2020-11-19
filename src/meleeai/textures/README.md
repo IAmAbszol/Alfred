@@ -1,2 +1,0 @@
-All credit goes to bjakjios for designing m-overlay. I merely translated the lua code to a Python equivalent, all textures and structuring goes to them.
-Link: https://github.com/bkacjios/m-overlay/blob/master/README.md
