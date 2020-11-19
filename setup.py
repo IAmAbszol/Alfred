@@ -8,7 +8,7 @@ def package_files(package_dir: str) -> Iterator[str]:
     :return: Iterator of file paths.
     """
     root_pkg_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                'src', 'meleeai', package_dir)
+                                'meleeai', package_dir)
     for root, _, file_names in os.walk(root_pkg_dir):
         for file_name in file_names:
             if os.path.splitext(file_name)[1] not in ('.py', '.pyc'):
@@ -27,16 +27,16 @@ setup(
         'Programming Language :: Python :: 3'
     ),
     description='Melee AI for slippi client.',
-    packages=find_packages('src'),
-	package_data={'src': EXTRA_FILES},
-	package_dir={'': 'src'},
+    packages=find_packages(),
+	package_data={'': EXTRA_FILES},
+	package_dir={'': '.'},
     install_requires=[
+        'absl-py>=0.11.0',
         'matplotlib>=3.2.1',
         'numpy>=1.18.2',
         'pillow>=7.1.2',
         'pykalman==0.9.5',
         'py-ubjson>=0.15.0',
-        'PyYaml>=5.3.1',
         'scipy>=1.5.1',
         'Sphinx==3.1.2',
         'termcolor>=1.1.0',
