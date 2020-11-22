@@ -1,3 +1,6 @@
 /__pycache__/
 *.pyc
 .vs/
+meleeaienv/
+*.egg-info/
+runtime/

@@ -1,6 +1,8 @@
-from slippi.event import ParseEvent
-from slippi.parse import parse
-from slippi.util import *
+from logging import debug
+
+from .event import FIRST_FRAME_INDEX
+from .parse import parse, ParseEvent
+from .util import *
 
 
 class Game(Base):
@@ -26,17 +28,29 @@ class Game(Base):
 
         handlers = {
             ParseEvent.START: lambda x: setattr(self, 'start', x),
-            ParseEvent.FRAME: lambda x: self.frames.append(x),
+            ParseEvent.FRAME: self._add_frame,
             ParseEvent.END: lambda x: setattr(self, 'end', x),
             ParseEvent.METADATA: lambda x: setattr(self, 'metadata', x),
             ParseEvent.METADATA_RAW: lambda x: setattr(self, 'metadata_raw', x)}
 
         parse(input, handlers)
 
-    def _attr_repr(self, attr):
-        if attr == 'frames':
-            return 'frames=[...](%d)' % len(self.frames)
-        elif attr != 'metadata_raw':
-            return super()._attr_repr(attr)
+    def _add_frame(self, f):
+        idx = f.index - FIRST_FRAME_INDEX
+        count = len(self.frames)
+        if idx == count:
+            self.frames.append(f)
+        elif idx < count: # rollback
+            debug(f"rollback: {count-1} -> {idx}")
+            self.frames[idx] = f
         else:
+            raise Exception(f'missing frames: {count-1} -> {idx}')
+
+    def _attr_repr(self, attr):
+        self_attr = getattr(self, attr)
+        if isinstance(self_attr, list):
+            return '%s=[...](%d)' % (attr, len(self_attr))
+        elif attr == 'metadata_raw':
             return None
+        else:
+            return super()._attr_repr(attr)

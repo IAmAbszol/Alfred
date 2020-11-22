@@ -8,6 +8,8 @@ import threading
 
 from multiprocessing import Process, Queue
 
+import slippi
+
 from slippi.game import Game
 
 class AsynchronousFileReader(threading.Thread):
@@ -42,18 +44,28 @@ class OfflineExecutor:
 
     def __init__(self):
         # Global fields
-        self._flags             = absl.flags.FLAGS 
-        self._frame_length      = self._flags['min_frame_length']
-        self._no_lra            = self._flags['no_lra']
-        
+        self._flags             = absl.flags.FLAGS
+        self._frame_length      = self._flags.min_frame_length
+        self._no_lras            = self._flags.no_lras
+
         self._emulator          = None
         self._slippi_com_file   = 'slippi_com.json'
         self._slippi_files = Queue()
 
+        self._stdout_queue      = None
+        self._stdout_reader     = None
+
+        # TODO: Add load on files and take into account system RAM.
+        total_read = 0
         logging.info('Processing Slippi file directory provided for any .slp files, please wait.')
         for f in os.listdir(self._flags.slippi_data):
             if f.endswith('.slp'):
-                self._slippi_files.put(os.path.join(self._flags.slippi_data, f))
+                total_read += 1
+                ports = self._should_play(os.path.join(self._flags.slippi_data, f))
+                if not -1 in ports:
+                    self._slippi_files.put((ports, os.path.join(self._flags.slippi_data, f)))
+                    logging.info(f'Added {f} to queue.')
+        logging.info(f'Successfully loaded {self._slippi_files.qsize()}/{total_read} ({round(self._slippi_files.qsize()/total_read * 100, 2)}%).')
 
     def __del__(self):
         while not self._slippi_files.empty():
@@ -68,9 +80,9 @@ class OfflineExecutor:
         """
         self._emulator = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        stdout_queue = Queue()
-        stdout_reader = AsynchronousFileReader(self._emulator.stdout, stdout_queue)
-        stdout_reader.start()
+        self._stdout_queue = Queue()
+        self._stdout_reader = AsynchronousFileReader(self._emulator.stdout, self._stdout_queue)
+        self._stdout_reader.start()
 
     def _prepare_script(self, slippi_file):
         """
@@ -97,31 +109,36 @@ class OfflineExecutor:
         """
         slippi_port = -1
         opponent_port = -1
-        slippi_game = Game(slippi_file)
 
-        if slippi_game.slippi.version >= tuple(list(map(int, self._flags['min_slippi_version'].split('.'))))
-            slippi_version = slippi_game.slippi.version
-            if slippi_version >= (2,0,0): 
-                if len(slippi_game.frames) >= self._flags['min_frame_length']:
-                    if self._flags['no_lras']:
-                        if not slippi_game.end.lras_initiator:
-                            return (slippi_port, opponent_port)
-                    start_frame = slippi_game.start.__dict__
-                    if not start_frame['is_teams'] and start_frame['stage'] == self._flags['stage_id']:
-                        ports = [slippi_port, opponent_port]
-                        for player_index, player in enumerate(start_frame['players']):
-                            if player is None:
-                                continue
-                            player_dict = player.__dict__
-                            if player_dict['character'] == self._flags['player_character_id'] and \
-                                    player_dict['costume'] == self._flags['player_costume_id']:
-                                ports[0] = player_index
-                            elif player_dict['character'] == self._flags['opponent_character_id']:
-                                ports[1] = player_index
-                        if not an y(skip):
-                             slippi_port, opponent_port = -1, -1
-                        else:
-                            slippi_port, opponent_port = ports
+        try:
+            slippi_game = Game(slippi_file)
+
+            slippi_version = tuple(list(map(int, str(slippi_game.start.slippi.version).split('.'))))
+            if slippi_version >= tuple(list(map(int, self._flags.min_slippi_version.split('.')))):
+                if slippi_version >= (2,0,0):
+                    if len(slippi_game.frames) >= self._flags.min_frame_length:
+                        if self._flags.no_lras:
+                            if slippi_game.end and not slippi_game.end.lras_initiator:
+                                return (slippi_port, opponent_port)
+                        start_frame = slippi_game.start.__dict__
+                        if not start_frame['is_teams'] and start_frame['stage'] == self._flags.stage_id:
+                            ports = [False, False]
+                            for player_index, player in enumerate(start_frame['players']):
+                                if player is None:
+                                    continue
+                                player_dict = player.__dict__
+                                if player_dict['character'] == self._flags.player_character_id and \
+                                        player_dict['costume'] == self._flags.player_costume_id:
+                                    ports[0] = player_index
+                                elif player_dict['character'] == self._flags.opponent_character_id:
+                                    ports[1] = player_index
+                            if not any(ports):
+                                slippi_port, opponent_port = -1, -1
+                            else:
+                                slippi_port, opponent_port = ports
+        except slippi.parse.ParseError as pe:
+            logging.error(f'Received parsing error: {pe}.')
+
         return  (slippi_port, opponent_port)
 
     def close(self):
@@ -131,30 +148,24 @@ class OfflineExecutor:
         if self.is_alive():
             self._emulator.terminate()
 
-            while not stdout_reader.eof():
-                logging.info(stdout_queue.get())
+            while not self._stdout_reader.eof():
+                logging.info(self._stdout_queue.get())
 
-            stdout_reader.close()
-            stdout_reader.join()
+            self._stdout_reader.close()
+            self._stdout_reader.join()
 
             self._emulator.stdout.close()
             self._emulator = None
-    
+
     def execute(self):
         """Starts the emulator if all the criterion has passed.
-        """ 
+        """
         if self.is_alive():
             logging.warning('Emulator process is still open, please wait and try again later.')
         else:
             while not self._slippi_files.empty():
-                slippi_file = self._slippi_files.get()
-
-                ports = self._should_play(slippi_file)
-                if any([x == -1 for x in ports]):
-                    logging.warning(f'Not Replaying : {slippi_file}')
-                    continue
-                else:
-                    logging.warning(f'Replaying. Observing Port {player_port} : {slippi_file}')
+                ports, slippi_file = self._slippi_files.get()
+                logging.warning(f'Replaying. Observing Port {ports[0]} : {slippi_file}')
 
                 self._prepare_script(slippi_file)
 

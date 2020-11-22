@@ -65,7 +65,7 @@ class Manager:
         """
         while self._published_bucket:
             # If time-complexity becomes an issue, sack space with linked_list [time] values and time-map
-            yield self._published_bucket.pop(min(self._published_bucket.keys())) 
+            yield self._published_bucket.pop(min(self._published_bucket.keys()))
 
     def check_emulator_state(self):
         """Initializes and monitors the emulator if the criteria is met for offline running.
@@ -74,16 +74,16 @@ class Manager:
         last_state = None
         while not self._emulator_state_queue.empty():
             state = self._emulator_state_queue.get()
-            if isinstance(state, (Start, Frame.Event.Type.POST, End)):
+            if isinstance(state, (Start, Frame, End)):
                 last_state = state
 
         # Very unlikely last state had more than start/end overwritten as processing is 1/60th of a second.
-        if isinstance(last_state, (Start, Frame.Event.Type.POST)) and self._is_running_offline():
+        if self._is_running_offline() and isinstance(last_state, (Start, Frame)):
             self._emulator_tick = datetime.datetime.utcnow()
 
         # Add conditional for if time exceeds wait time for data
-        if (isinstance(last_state, End) or not self._emulator.is_alive() or \
-            (datetime.datetime.utcnow() - self._emulator_tick).total_seconds() >= self._flags['burnouttime']) and self._is_running_offline():
+        if self._is_running_offline() and (isinstance(last_state, End) or \
+            (self._emulator_tick and (datetime.datetime.utcnow() - self._emulator_tick).total_seconds() >= self._flags.burnouttime)):
             if self._emulator.is_alive():
                 self._emulator.close()
             self._emulator_tick = None
@@ -114,9 +114,11 @@ class Manager:
         self._bucket.append((message_type, timestamp, data))
 
         # POST only comes from players
-        if isinstance(data[2], (Start, Frame.Event.Type.POST, End)):
+        if isinstance(data, (Start, End)):
+            self._emulator_state_queue.put_nowait(data)
+        elif isinstance(data, Frame):
             self._emulator_state_queue.put_nowait(data[2])
-            
+
 
     def retrieve_prediction(self):
         pass

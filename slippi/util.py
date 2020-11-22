@@ -1,11 +1,9 @@
-import enum, re, struct, sys, termcolor, warnings
+import enum, os, re, struct, sys
+
+from .log import log
 
 
 PORTS = range(4)
-
-
-warnings.formatwarning = lambda msg, *args, **kwargs: '%s %s\n' % (termcolor.colored('WARNING', 'yellow'), msg)
-warn = warnings.warn
 
 
 def _indent(s):
@@ -14,7 +12,7 @@ def _indent(s):
 
 def _format_collection(coll, delim_open, delim_close):
     elements = [_format(x) for x in coll]
-    if '\n' in elements[0]:
+    if elements and '\n' in elements[0]:
         return delim_open + '\n' + ',\n'.join(_indent(e) for e in elements) + delim_close
     else:
         return delim_open + ', '.join(elements) + delim_close
@@ -27,28 +25,27 @@ def _format(obj):
         return _format_collection(obj, '(', ')')
     elif isinstance(obj, list):
         return _format_collection(obj, '[', ']')
+    elif isinstance(obj, enum.Enum):
+        return repr(obj)
     else:
-        return '%s' % (obj,)
+        return str(obj)
 
 
 def try_enum(enum, val):
     try:
         return enum(val)
     except ValueError:
-        warn('unknown %s: %s' % (enum.__name__, val))
+        log.info('unknown %s: %s' % (enum.__name__, val))
         return val
 
 
 def unpack(fmt, stream):
     fmt = '>' + fmt
     size = struct.calcsize(fmt)
-    if not isinstance(stream, bytes):
-        bytes_obj = stream.read(size)
-    else:
-        bytes_obj = stream[:size]
-    if not bytes_obj:
-        raise EofException()
-    return struct.unpack(fmt, bytes_obj)
+    bytes = stream.read(size)
+    if not bytes:
+        raise EOFError()
+    return struct.unpack(fmt, bytes)
 
 
 def expect_bytes(expected_bytes, stream):
@@ -77,17 +74,25 @@ class Base:
 
 class Enum(enum.Enum):
     def __repr__(self):
-        return self.__class__.__name__+'.'+self._name_
+        return '%r:%s' % (self._value_, self._name_)
 
 
 class IntEnum(enum.IntEnum):
     def __repr__(self):
-        return self.__class__.__name__+'.'+self._name_
+        return '%d:%s' % (self._value_, self._name_)
+
+    @classmethod
+    def _missing_(cls, value):
+        val_desc = f'0x{value:x}' if isinstance(value, int) else f'{value}'
+        raise ValueError(f'{val_desc} is not a valid {cls.__name__}') from None
 
 
 class IntFlag(enum.IntFlag):
-    pass
+    def __repr__(self):
+        members, _ = enum._decompose(self.__class__, self._value_)
+        return '%s:%s' % (bin(self._value_), '|'.join([str(m._name_ or m._value_) for m in members]))
 
 
-class EofException(Exception):
-    pass
+class EOFError(IOError):
+    def __init__(self):
+        super().__init__('unexpected end of file')

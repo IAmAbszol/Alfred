@@ -16,7 +16,7 @@ def subprocess_cmd(command):
 if __name__ == '__main__':
 
    COMMANDS          = []
-   ENV_NAME          = 'meleeai'
+   ENV_NAME          = 'meleeaienv'
 
    TARGET_PLATFORM   = platform.system().lower()
    TARGET_PYTHON     = sys.version_info
@@ -38,12 +38,12 @@ if __name__ == '__main__':
          PYTHON_EXECUTABLE = '%s\\Scripts\\python.exe' % ENV_NAME
          COMMANDS.append('%s -m pip install -e .' % PYTHON_EXECUTABLE)
          COMMANDS.append('%s/Scripts/sphinx-apidoc.exe -o docs/source/ src/' % ENV_NAME)
-         sys.path.insert(0, 'meleeai/Scripts/')
+         sys.path.insert(0, '%s/Scripts/' % ENV_NAME)
       elif TARGET_PLATFORM == 'linux':
          PYTHON_EXECUTABLE = '%s/bin/python' % ENV_NAME
          COMMANDS.append('%s -m pip install -e .' % PYTHON_EXECUTABLE)
          COMMANDS.append('%s/bin/sphinx-apidoc -o docs/source/ src/' % ENV_NAME)
-         sys.path.insert(0, 'meleeai/Scripts/')
+         sys.path.insert(0, '%s/Scripts/' % ENV_NAME)
       else:
          print('Unsupported Platform: {}, build is terminating.'.format(TARGET_PLATFORM))
 

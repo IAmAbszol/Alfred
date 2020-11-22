@@ -1,4 +1,4 @@
-import absl.flags
+#import absl.flags
 import datetime
 import logging
 import multiprocessing
@@ -12,9 +12,6 @@ from meleeai.utils.message_type import MessageType
 from meleeai.utils.slippi_parser import SlippiParser
 from meleeai.utils.video_parser import VideoParser
 
-
-from slippi.event import Buttons, Frame, Start, End
-
 class NetworkReceiver():
 
     def __init__(self):
@@ -22,16 +19,16 @@ class NetworkReceiver():
         Network receiver class for explicity set ports defined in codebase.
         """
         # Global fields
-        self._flags = absl.flags.FLAGS
+        #self._flags = absl.flags.FLAGS
 
         self._mp_dict        = {
             'slippi'    : None,
-            'video'     : None
+            #'video'     : None
         }
 
         self._func_dict         = {
             'slippi'    : self._listen_slippi,
-            'video'     : self._listen_video
+            #'video'     : self._listen_video
         }
 
         self._namespace         = multiprocessing.Manager().Namespace()
@@ -46,13 +43,13 @@ class NetworkReceiver():
     def _listen_slippi(self, parent):
         slippi_parser     = SlippiParser()
         slippi_socket     = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        slippi_socket.bind(('', self._flags.slippiport))
+        slippi_socket.bind(('', 55080))
         slippi_socket.settimeout(1)
         while parent._namespace.run:
             try:
                 data_str, _         = slippi_socket.recvfrom(1024)
                 events              = slippi_parser.parse_bin(BytesIO(data_str))
-                if events and len(parent._receiver_list) <= self._flags.receiverbuffer:
+                if events and len(parent._receiver_list) <= 100:
                     parent._receiver_list.extend([(MessageType.SLIPPI, time_event) for time_event in events])
             except socket.timeout:
                 logging.warning('Failed to receive any data from slippi socket.')
@@ -63,6 +60,8 @@ class NetworkReceiver():
         slippi_socket.close()
 
     def _listen_video(self, parent):
+        pass
+        """
         video_parser      = VideoParser()
         video_socket      = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         video_socket.bind(('', self._flags.videoport))
@@ -79,6 +78,7 @@ class NetworkReceiver():
             except OSError:
                 logging.warning('Video receiver pipeline has been closed.')
         video_socket.close()
+        """
 
     def collect(self):
         for name in self._func_dict:
