@@ -40,12 +40,12 @@ class Manager:
             self._emulator = OfflineExecutor()
 
     def __del__(self):
-        while not self._emulator_state_queue.empty():
+        while self._emulator_state_queue.qsize():
             self._emulator_state_queue.get(timeout=.001)
         self._emulator_state_queue.close()
         self._emulator_state_queue.join_thread()
 
-        while not self._predictions_queue.empty():
+        while self._predictions_queue.qsize():
             self._predictions_queue.get(timeout=.001)
         self._predictions_queue.close()
         self._predictions_queue.join_thread()
@@ -55,6 +55,7 @@ class Manager:
         :return: bool
         """
         ret = False
+        #print(not self._flags.live_emulation, self._flags.train, os.path.exists(self._flags.emulator), os.path.exists(self._flags.slippi_data))
         if not self._flags.live_emulation and self._flags.train:
             if os.path.exists(self._flags.emulator) and os.path.exists(self._flags.slippi_data):
                 ret = True
@@ -87,6 +88,9 @@ class Manager:
             if self._emulator.is_alive():
                 self._emulator.close()
             self._emulator_tick = None
+
+        #print(self._is_running_offline(), self._emulator_tick, not self._emulator.is_alive())
+        if self._is_running_offline() and self._emulator_tick is None and not self._emulator.is_alive():
             self._emulator.execute()
 
     def close(self):

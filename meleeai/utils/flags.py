@@ -8,7 +8,7 @@ FLAGS = absl.flags.FLAGS
 def create_flags():
     """Creates the flags"""
     flags = absl.flags
-    
+
     flags.DEFINE_integer('display_queuesize', 10, 'Queue size regarding the display gui.')
     flags.DEFINE_integer('controllerport', 55079, 'Controller port sending to Alfred.')
     flags.DEFINE_integer('slippiport', 55080, 'Slippi port sending to Alfred.')
@@ -23,6 +23,7 @@ def create_flags():
     flags.DEFINE_integer('gc_ports', 4, 'Number of gamecube ports on the system.')
     flags.DEFINE_bool('live_emulation', False, 'If the training for alfred should be conducted on a live session.')
     flags.DEFINE_string('emulator', './Ishiiruka/bin/Dolphin.exe' if os.name == 'nt' else './Ishiiruka/bin/dolphin', 'Alfred Ishiiruka Slippi emulator with socket implementation. Playback MUST be setup if this choice is used.')
+    flags.DEFINE_string('melee_iso', './Melee/', 'Melee ISO location.')
     flags.DEFINE_integer('min_frame_length', 1500, 'Minimum frame length required to run the emulation.')
     flags.DEFINE_bool('no_lras', True, 'Ignore slippi recordings that end with LRA+START.')
     flags.DEFINE_integer('burnouttime', 10000, 'Time to wait until offline emulation has completed a slippi playback. Used when End frame is either missed, dropped, or merely not sent.')

@@ -68,7 +68,7 @@ class Engine:
             self._display_process.start()
 
         start = datetime.datetime.utcnow()
-        while (datetime.datetime.utcnow() - start).total_seconds() < 30:
+        while True: #(datetime.datetime.utcnow() - start).total_seconds() < 30:
             display_queue_open = self._display_queue_in.qsize() <= self._flags.display_queuesize
             for payload in self._network_receiver.collect():
                 message_type, (timestamp, data) = payload

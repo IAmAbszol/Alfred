@@ -21,6 +21,6 @@ def record_factory(*args, **kwargs):
 
 logging.setLogRecordFactory(record_factory)
 logging.basicConfig(
-    level=os.environ.get('LOG_LEVEL', 'WARNING').upper(),
+    #level=os.environ.get('LOG_LEVEL', 'WARNING').upper(),
     format="%(levelname_colored)s: %(message)s")
 log = logging.getLogger()

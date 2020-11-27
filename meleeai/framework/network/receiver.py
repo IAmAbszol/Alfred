@@ -36,10 +36,6 @@ class NetworkReceiver():
         self._receiver_list     = multiprocessing.Manager().list()
         self._run = True
 
-        for name in self._func_dict:
-            self._mp_dict[name] = multiprocessing.Process(target=self._func_dict[name], args=(self, ))
-
-
     def _listen_slippi(self, parent):
         slippi_parser     = SlippiParser()
         slippi_socket     = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -53,10 +49,10 @@ class NetworkReceiver():
                     parent._receiver_list.extend([(MessageType.SLIPPI, time_event) for time_event in events])
             except socket.timeout:
                 logging.warning('Failed to receive any data from slippi socket.')
-            except OSError:
-                logging.warning('Slippi receiver pipeline has been closed.')
-            except Exception:
-                logging.warning('Slippi crashed.')
+            except OSError as os_error:
+                logging.warning(f'Slippi receiver pipeline has been closed. Error: {os_error}.')
+            except Exception as excp:
+                logging.warning(f'Slippi crashed. Error: {excp}.')
         slippi_socket.close()
 
     def _listen_video(self, parent):
@@ -82,7 +78,10 @@ class NetworkReceiver():
 
     def collect(self):
         for name in self._func_dict:
-            if self._namespace.run and not self._mp_dict[name].is_alive():
+            if not name in self._mp_dict or self._mp_dict[name] is None:
+                self._mp_dict[name] = multiprocessing.Process(target=self._func_dict[name], args=(self, ))
+
+            if self._namespace.run and name in self._mp_dict and not self._mp_dict[name] is None and not self._mp_dict[name].is_alive():
                 self._mp_dict[name].start()
         while self._receiver_list:
             yield self._receiver_list.pop(0)
@@ -90,6 +89,7 @@ class NetworkReceiver():
     def stop(self):
         logging.info('Stopped Network Receiver, awaiting thread completion.')
         self._namespace.run = False
-        for mp_thread in self._mp_dict.values():
-            mp_thread.join()
+        for mp_process in self._mp_dict.values():
+            if mp_process.is_alive():
+                mp_process.join()
         logging.info('Successfully joined all threads, exiting Network Receiver.')
