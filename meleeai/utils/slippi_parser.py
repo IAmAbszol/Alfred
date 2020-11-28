@@ -7,6 +7,7 @@ import pickle
 from slippi.event import Frame, Start, End
 from slippi.parse import ParseEvent
 from slippi.parse import _parse_events as parse_events
+from slippi.parse import _parse_event_payloads as parse_event_payloads
 from slippi.util import expect_bytes, unpack
 
 class SlippiParser:
@@ -66,6 +67,7 @@ class SlippiParser:
         except Exception as e:
             stream.seek(len(b'{U\x03raw[$U#l'))
 
+        # TODO: Calculate total_size
         parse_events(stream, self.DEFAULT_PAYLOAD_SIZES, 0, handlers)
         return events
 
