@@ -22,7 +22,7 @@ setup(
     author='Abszol',
     author_email='kdarling95@yahoo.com',
     name='meleeai',
-    version='1.0.0',
+    version='0.1.0',
     classifiers=(
         'Programming Language :: Python :: 3'
     ),
@@ -32,6 +32,7 @@ setup(
 	package_dir={'': '.'},
     install_requires=[
         'absl-py>=0.11.0',
+        'gym>=0.17.3',
         'matplotlib>=3.2.1',
         'numpy>=1.18.2',
         'pillow>=7.1.2',
@@ -42,7 +43,7 @@ setup(
         'termcolor>=1.1.0',
         'tk>=0.1.0'
     ],
-    python_requires='>=3.6, <3.8',
+    python_requires='>=3.6, <3.9',
     url='',
     entry_points={
         'console_scripts':

@@ -1,7 +1,6 @@
-import io, ubjson
+import io, logging, ubjson
 
 from .event import EventType, Start, End, Frame
-from .log import log
 from .metadata import Metadata
 from .util import *
 
@@ -49,15 +48,15 @@ def _parse_event_payloads(stream):
         (code, size) = unpack('BH', stream)
         sizes[code] = size
         try: EventType(code)
-        except ValueError: log.info('ignoring unknown event type: 0x%02x' % code)
+        except ValueError: logging.info('ignoring unknown event type: 0x%02x' % code)
 
-    log.debug(f'event payload sizes: {sizes}')
+    logging.debug(f'event payload sizes: {sizes}')
     return (2 + this_size, sizes)
 
 
 def _parse_event(event_stream, payload_sizes):
     (code,) = unpack('B', event_stream)
-    log.debug(f'Event: 0x{code:x}')
+    logging.debug(f'Event: 0x{code:x}')
 
     # remember starting pos for better error reporting
     try: base_pos = event_stream.tell() if event_stream.seekable() else None

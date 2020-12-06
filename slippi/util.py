@@ -1,6 +1,4 @@
-import enum, os, re, struct, sys
-
-from .log import log
+import enum, logging, os, re, struct, sys
 
 
 PORTS = range(4)
@@ -35,7 +33,7 @@ def try_enum(enum, val):
     try:
         return enum(val)
     except ValueError:
-        log.info('unknown %s: %s' % (enum.__name__, val))
+        logging.info('unknown %s: %s' % (enum.__name__, val))
         return val
 
 

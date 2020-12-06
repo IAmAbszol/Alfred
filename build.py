@@ -37,12 +37,14 @@ if __name__ == '__main__':
       if TARGET_PLATFORM == 'windows':
          PYTHON_EXECUTABLE = '%s\\Scripts\\python.exe' % ENV_NAME
          COMMANDS.append('%s -m pip install -e .' % PYTHON_EXECUTABLE)
-         COMMANDS.append('%s/Scripts/sphinx-apidoc.exe -o docs/source/ src/' % ENV_NAME)
+         COMMANDS.append('%s/Scripts/sphinx-apidoc.exe -o docs/source/ ./slippi/' % ENV_NAME)
+         COMMANDS.append('%s/Scripts/sphinx-apidoc.exe -o docs/source/ ./meleeai/' % ENV_NAME)
          sys.path.insert(0, '%s/Scripts/' % ENV_NAME)
       elif TARGET_PLATFORM == 'linux':
          PYTHON_EXECUTABLE = '%s/bin/python' % ENV_NAME
          COMMANDS.append('%s -m pip install -e .' % PYTHON_EXECUTABLE)
-         COMMANDS.append('%s/bin/sphinx-apidoc -o docs/source/ src/' % ENV_NAME)
+         COMMANDS.append('%s/bin/sphinx-apidoc -o docs/source/ ./slippi/' % ENV_NAME)
+         COMMANDS.append('%s/bin/sphinx-apidoc -o docs/source/ ./meleeai/' % ENV_NAME)
          sys.path.insert(0, '%s/Scripts/' % ENV_NAME)
       else:
          print('Unsupported Platform: {}, build is terminating.'.format(TARGET_PLATFORM))

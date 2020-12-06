@@ -10,7 +10,7 @@ COLORS = {
     'CRITICAL': 'red',
     'ERROR': 'red'}
 
-
+"""
 _old_factory = logging.getLogRecordFactory()
 def record_factory(*args, **kwargs):
     record = _old_factory(*args, **kwargs)
@@ -20,7 +20,8 @@ def record_factory(*args, **kwargs):
 
 
 logging.setLogRecordFactory(record_factory)
-logging.basicConfig(
+#logging.basicConfig(
     #level=os.environ.get('LOG_LEVEL', 'WARNING').upper(),
-    format="%(levelname_colored)s: %(message)s")
+    #format="%(levelname_colored)s: %(message)s")
 log = logging.getLogger()
+"""
