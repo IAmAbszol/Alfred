@@ -32,6 +32,7 @@ setup(
 	package_dir={'': '.'},
     install_requires=[
         'absl-py>=0.11.0',
+        'importlib-metadata>=2.0.0',
         'gym>=0.17.3',
         'matplotlib>=3.2.1',
         'numpy>=1.18.2',
@@ -43,7 +44,7 @@ setup(
         'termcolor>=1.1.0',
         'tk>=0.1.0'
     ],
-    python_requires='>=3.6, <3.9',
+    python_requires='>=3.6, <3.10',
     url='',
     entry_points={
         'console_scripts':

@@ -10,6 +10,11 @@ from meleeai.framework.emulator.offline import OfflineExecutor
 from meleeai.framework.training.train import Train
 from slippi.event import End, Start, Frame
 
+
+from meleeai.framework.network.sender import NetworkSender
+from meleeai.utils.message_type import MessageType
+import json
+
 class Manager:
     """Manager"""
     def __init__(self):
@@ -27,7 +32,7 @@ class Manager:
         self._emulator_tick        = None
 
         # Organized the data coming in
-        self._bucket                = []
+        self._bucket                = Queue()
         self._published_bucket      = {}
         self._window_size           = self._flags.prediction_tick_rate
         self._window_start          = None
@@ -39,7 +44,14 @@ class Manager:
         if self._is_running_offline():
             self._emulator = OfflineExecutor()
 
+        self._sender = NetworkSender()
+
     def __del__(self):
+        while self._bucket.qsize():
+            self._bucket.get(timeout=.001)
+        self._bucket.close()
+        self._bucket.join_thread()
+
         while self._emulator_state_queue.qsize():
             self._emulator_state_queue.get(timeout=.001)
         self._emulator_state_queue.close()
@@ -110,12 +122,15 @@ class Manager:
         if self._window_start is None:
             self._window_start = timestamp
         # Timestamp triggers new bucket to be created, previous is published
-        if (self._window_start + self._window_size) < timestamp:
-            self._window_start = timestamp - (timestamp % self._window_size)
-            if self._bucket:
-                self._published_bucket[self._window_start] = self._bucket[:]
-                self._bucket.clear()
-        self._bucket.append((message_type, timestamp, data))
+        #if (self._window_start + self._window_size) < timestamp:
+        #    self._window_start = timestamp - (timestamp % self._window_size)
+        #while self._bucket.qsize() > 0:
+        #    (message_type, timestamp, payload) = self._bucket.get()
+        #if MessageType.CONTROLLER == message_type and data['device_number'] == 1:
+        #    self._sender.send(bytes(json.dumps(data), encoding='utf-8'))
+            #self._published_bucket[self._window_start] = self._bucket[:]
+            #self._bucket = []
+        #self._bucket.put_nowait((message_type, timestamp, data))
 
         # POST only comes from players
         if isinstance(data, (Start, End)):

@@ -1,9 +1,40 @@
 import absl.flags
 import logging
+import sys
+
+from gc import get_referents
+from types import ModuleType, FunctionType
 
 import slippi
 
 from slippi.game import Game
+
+BLACKLIST = type, ModuleType, FunctionType
+
+class ControllerState:
+
+    def __init__(self, data):
+        """Initializes the ControllerState using Slippi Pre/Post data
+        """
+        pass
+
+# Stackoverflow: https://stackoverflow.com/a/30316760/10292238
+def getsize(obj):
+    """sum size of object & members."""
+    if isinstance(obj, BLACKLIST):
+        raise TypeError('getsize() does not take argument of type: '+ str(type(obj)))
+    seen_ids = set()
+    size = 0
+    objects = [obj]
+    while objects:
+        need_referents = []
+        for obj in objects:
+            if not isinstance(obj, BLACKLIST) and id(obj) not in seen_ids:
+                seen_ids.add(id(obj))
+                size += sys.getsizeof(obj)
+                need_referents.append(obj)
+        objects = get_referents(*need_referents)
+    return size
 
 def should_play(slippi_file):
     """Determines whether the criterion to run has been met.

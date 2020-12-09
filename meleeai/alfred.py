@@ -4,12 +4,28 @@ import datetime
 import logging
 import os
 
-from functools import partial
+from termcolor import colored
 
 from meleeai.framework.engine import Engine
 from meleeai.utils.flags import create_flags
 
-FORMAT = '(%(asctime)s) [%(filename)s:%(lineno)s - %(funcName)20s() ] [%(levelname)s] %(message)s'
+COLORS = {
+    'WARNING': 'yellow',
+    'INFO': 'white',
+    'DEBUG': 'grey',
+    'CRITICAL': 'red',
+    'ERROR': 'red'}
+
+
+_old_factory = logging.getLogRecordFactory()
+
+def record_factory(*args, **kwargs):
+    record = _old_factory(*args, **kwargs)
+    l = record.levelname
+    record.levelname_colored = colored(l, COLORS.get(l, 'white'))
+    return record
+
+FORMAT = '(%(asctime)s) [%(filename)s:%(lineno)s - %(funcName)20s() ] [%(levelname_colored)s] %(message)s'
 
 def setup(args):
     """Begins Alfred's processing Engine.
@@ -18,6 +34,7 @@ def setup(args):
         os.makedirs('runtime')
 
     # Setup logging
+    logging.setLogRecordFactory(record_factory)
     logging.basicConfig(
         level=logging.INFO,
         format=FORMAT,
