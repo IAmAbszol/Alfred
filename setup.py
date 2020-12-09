@@ -44,7 +44,7 @@ setup(
         'termcolor>=1.1.0',
         'tk>=0.1.0'
     ],
-    python_requires='>=3.6, <3.10',
+    python_requires='>=3.8, <3.9',
     url='',
     entry_points={
         'console_scripts':

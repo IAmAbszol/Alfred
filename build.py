@@ -26,7 +26,7 @@ if __name__ == '__main__':
       print('Invalid bit version passed, exiting.')
       exit(1)
 
-   if (3, 5) <= TARGET_PYTHON >= (3, 8):
+   if (3, 8) <= TARGET_PYTHON < (3, 9):
       print('Invalid Python Version Used: {}, build is terminating.'.format(sys.version))
    else:
       # Setup the virtualenv
