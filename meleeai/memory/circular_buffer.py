@@ -1,4 +1,6 @@
-from multiprocessing.shared_memory import SharedMemory
+import numpy as np
+
+from multiprocessing import shared_memory, Lock
 
 class CircularBuffer:
    """CircularBuffer implementation in Python"""
@@ -6,7 +8,7 @@ class CircularBuffer:
       """Initializes the buffer with size 100 elements.
       :param size: Size of the buffer.
       """
-      assert(obj is not None)
+      assert obj is not None, 'Object cannot be None.'
       self.__size          = size
       self.__read_head     = 0
       self.__write_head    = 0
@@ -14,30 +16,54 @@ class CircularBuffer:
       self.__is_ahead      = True
       self.__has_written   = False
 
-      self.__buffer        =
+      self.__obj           = type(obj)
+      self.__lock          = Lock()
+      self.__array         = np.ones(shape=(size), dtype=object)
+      self.__shm_obj       = shared_memory.SharedMemory(create=True, size=self.__array.nbytes)
+      self.__buffer        = np.ndarray(shape=(self.__array.shape), buffer=self.__shm_obj.buf, dtype=object)
+      self.__buffer[:]     = self.__array[:]
+
+
+   def __del__(self):
+      self.__shm_obj.close()
+      self.__shm_obj.unlink()
+
+
+   def get_obj(self):
+      return self.__obj
+
+
+   def get_name(self):
+      """Gets the name of the shared_memory instance.
+      :return: String
+      """
+      return self.__shm_obj.name
 
 
    def read(self):
       """Reads a position and returns an index off the buffer.
-      :return: Integer
+      :return: Integer, object
       """
       if not self.__has_written:
          raise IndexError('Buffer hasn\'t been written too yet.')
 
-      tmp_read_head = self.__read_head
+      read_head_index = self.__read_head
 
       self.__is_ahead = True
       future_read_head = (self.__read_head + 1) % self.__size
       if self.__has_written and future_read_head != self.__write_head:
          self.__read_head = future_read_head
-      return tmp_read_head
+      with self.__lock:
+         return read_head_index, self.__buffer[read_head_index]
 
 
-   def write(self):
+   def write(self, obj):
       """Writes data to the buffer. Returns the index of the current write.
+      :param obj: Object to insert into list.
       :return: Integer
       """
-      tmp_write_head = self.__write_head
+      assert isinstance(obj, self.__obj), f'Expected object of type {self.__obj}, received type {type(obj)}.'
+      write_head_index = self.__write_head
 
       self.__has_written = True
       future_write_head = (self.__write_head + 1) % self.__size
@@ -47,4 +73,6 @@ class CircularBuffer:
          if future_write_head == self.__read_head:
             self.__is_ahead = False
          self.__write_head = future_write_head
-      return tmp_write_head
+      with self.__lock:
+         self.__buffer[write_head_index] = obj
+         return write_head_index

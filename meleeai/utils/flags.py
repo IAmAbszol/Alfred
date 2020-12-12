@@ -15,7 +15,7 @@ def create_flags():
     flags.DEFINE_integer('slippiport', 55080, 'Slippi port sending to Alfred.')
     flags.DEFINE_integer('videoport', 55081, 'Video port sending to Alfrd.')
     flags.DEFINE_integer('playerport', 55082, 'Starting player port 0, any subsequence is 55082 + n.')
-    flags.DEFINE_integer('receiverbuffer', 100, 'Buffer data to hold till consumed.')
+    flags.DEFINE_integer('receiverbuffer', 1000, 'Buffer data to hold till consumed.')
     flags.DEFINE_integer('slippi_start_byte', 418, 'Start byte (54) for slippi start data.')
     flags.DEFINE_integer('slippi_pre_byte', 64, 'Pre frame byte (55) for pre-frame data.')
     flags.DEFINE_integer('slippi_post_byte', 52, 'Post frame byte (56) for post-frame data.')

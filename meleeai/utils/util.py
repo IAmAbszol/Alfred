@@ -11,13 +11,6 @@ from slippi.game import Game
 
 BLACKLIST = type, ModuleType, FunctionType
 
-class ControllerState:
-
-    def __init__(self, data):
-        """Initializes the ControllerState using Slippi Pre/Post data
-        """
-        pass
-
 # Stackoverflow: https://stackoverflow.com/a/30316760/10292238
 def getsize(obj):
     """sum size of object & members."""

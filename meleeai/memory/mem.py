@@ -1,57 +1,82 @@
-from multiprocessing import shared_memory, Lock
-
-from meleeai.utils.circular_buffer import CircularBuffer
+from meleeai.memory.circular_buffer import CircularBuffer
 
 class Memory:
 
-   def __init__(self, size=100):
-      self._size           = size
-      self._lock           = Lock()
-      self._memory_map     = {}
+   instance = None
 
-   def __del__(self):
-      for mem in self._memory_map.values():
-         mem.close()
-         mem.unlink()
+   class _SingletonMemory:
 
-   def initialize(self):
-      """Initializes the memory for the specified object.
-      :return: String, name of SharedMemory.
-      """
-      pass
+      def __init__(self, memory_size):
+         """Singleton instance of the Memory object.
+         :param memory_size: Size to allocate per Circular Buffer.
+         """
+         self.__size          = memory_size
+         self.__objects       = set()
+         self.__memory_dict   = {}
 
-   def insert(self, name, object):
-      """SharedMemory is homogeneous and the type of the object will
-      be used as the key to access said map.
-      :param object: Object to insert into the map.
-      """
-      pass
-
-   def read(self, name):
-      return self._memory_map[name].read()
+      def __str__(self):
+         return f'Memory instance, contains {len(self.__memory_dict)} entries.'
 
 
-"""
-   CASE #1
-   DICT READ == MEM READ
-   {x    : 2}
-   x     = [2,5,2,3,4]
-   Solution: (If MEM UPDATE): Update READ and MEM together by one. (If READ UPDATE): None.
-
-   CASE #2
-   DICT READ > MEM READ
-   {x    : 3}
-   x     = [2,5,2,3,4]
-   Solution: Nothing to be done, don't read
-
-   CASE #3
-   DICT READ < MEM READ
-   {x    : 1}
-   x     = [2,5,2,3,4]
-   Solution: Nothing to be done
+      def _create(self, obj):
+         """Creates a CircularBuffer for the object.
+         Will not insert upon creation, use write(...).
+         :param obj: Object Circularbuffer should represent.
+         :return: Tuple(name, CircularBuffer)
+         """
+         if type(obj) not in self.__objects:
+            circular_buffer = CircularBuffer(obj, size=self.__size)
+            self.__memory_dict[circular_buffer.get_name()] = circular_buffer
+            return (circular_buffer.get_name(), circular_buffer)
 
 
-   The DICT READ must never be overlapping the MEM READ position if it's already overlapped.
-   In other words, if it's approaching on the LHS then it can never surpass the MEM READ pos.
+      def lookup_object(self, obj):
+         """Finds the name and buffer associated with the dictionary.
+         :param obj: Object to look up.
+         :return: Tuple (name, CircularBuffer)
+         """
+         print(self.__memory_dict)
+         if type(obj) in self.__objects:
+            for name, circular_buffer in self.__memory_dict.items():
+               if circular_buffer.get_obj() == type(obj):
+                  return (name, circular_buffer)
 
-"""
+
+      def read_memory(self, name):
+         """Reads the mapped shared_memory to the set name.
+         :param name: Name of shared_memory instance.
+         :throws: KeyError when attempting to access memory that hasn't been set
+                  aside yet.
+         :return: object
+         """
+         if name not in self.__memory_dict:
+            raise KeyError(f'No such key entry found {name}, initialize first.')
+         return self.__memory_dict[name].read()
+
+
+      def write_memory(self, obj, name=None):
+         """Writes the object to its respective memory slot,
+         creating said object if it doesn't exist. Its the users
+         responsibilty to monitor objects coming in.
+         :param obj: Object to write as key to CircularBuffer.
+         :return: Tuple(name, circular_buffer)
+         """
+         if type(obj) not in self.__objects:
+            name, circular_buffer = self._create(obj)
+         elif name is not None:
+            if name not in self.__memory_dict:
+               raise KeyError(f'No such key entry found {name}, initialize first.')
+         else:
+            name, circular_buffer = self.lookup_object(obj)
+         self.__objects.add(type(obj))
+         return (name, circular_buffer)
+
+
+   def __init__(self, memory_size):
+      if not Memory.instance:
+         Memory.instance = Memory._SingletonMemory(memory_size)
+
+def get_memory(memory_size=1000):
+   if not Memory.instance:
+      Memory.instance = Memory._SingletonMemory(memory_size)
+   return Memory.instance

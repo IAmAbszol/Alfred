@@ -1,7 +1,7 @@
 import struct
 
 class ControllerParser:
-
+   """Controller Parser"""
 
    CONTROLLER_BIN_STRING = 'I I I H B B B B B B B B B'
    CONTROLLER_BIN_SIZE = struct.calcsize(CONTROLLER_BIN_STRING)

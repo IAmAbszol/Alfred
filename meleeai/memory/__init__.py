@@ -1,1 +1,1 @@
-from meleeai.framework.memory.
+from .mem import get_memory

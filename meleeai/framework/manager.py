@@ -7,7 +7,6 @@ import sys
 from multiprocessing import Queue
 
 from meleeai.framework.emulator.offline import OfflineExecutor
-from meleeai.framework.training.train import Train
 from slippi.event import End, Start, Frame
 
 
@@ -22,9 +21,6 @@ class Manager:
         """
         # Global fields
         self._flags = absl.flags.FLAGS
-
-        # Training framework
-        self._trainer               = Train()
 
         # Emulator object, states, and slippi data
         self._emulator              = None
