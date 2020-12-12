@@ -81,13 +81,13 @@ class NetworkReceiver():
                 controller_data     = controller_parser.parse(data_str)
                 if controller_data:
                     timestamp = float(f'{controller_data["timestamp_sec"]}.{controller_data["timestamp_micro"]}')
-                    controller_memory_name, _ = memory.write_memory(ControllerData(MessageType.CONTROLLER, datetime.datetime.utcfromtimestamp(timestamp), controller_data))
+                    controller_memory_name, _ = memory.write_memory(ControllerData(MessageType.CONTROLLER, datetime.datetime.utcfromtimestamp(timestamp), controller_data), name=controller_memory_name)
                     if controller_data['device_number'] == 1:
                         ns.send(bytes(json.dumps(controller_data), encoding='utf-8'))
             except socket.timeout:
                 logging.warning('Failed to receive any data from controller socket.')
-            #except Exception as excp:
-            #    logging.warning(f'Controller crashed. Error: {excp}.')
+            except Exception as excp:
+                logging.warning(f'Controller crashed. Error: {excp}.')
         controller_socket.close()
 
 
@@ -100,7 +100,7 @@ class NetworkReceiver():
         slippi_socket     = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         slippi_socket.bind(('', self.slippi_port))
         slippi_socket.settimeout(1)
-        slippi_name = None
+        slippi_memory_name = None
         memory = get_memory(self.receiver_buffer)
         while namespace.run:
             try:
@@ -108,7 +108,7 @@ class NetworkReceiver():
                 events              = slippi_parser.parse_bin(BytesIO(data_str))
                 if events:
                     for timestamp, event in events:
-                        slippi_memory_name, _ = memory.write_memory(SlippiData(MessageType.SLIPPI, datetime.datetime.utcfromtimestamp(timestamp), event))
+                        slippi_memory_name, _ = memory.write_memory(SlippiData(MessageType.SLIPPI, datetime.datetime.utcfromtimestamp(timestamp), event), name=slippi_memory_name)
             except socket.timeout:
                 logging.warning('Failed to receive any data from slippi socket.')
             except OSError as os_error:

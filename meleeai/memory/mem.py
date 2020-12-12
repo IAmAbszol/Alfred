@@ -27,6 +27,7 @@ class Memory:
          if type(obj) not in self.__objects:
             circular_buffer = CircularBuffer(obj, size=self.__size)
             self.__memory_dict[circular_buffer.get_name()] = circular_buffer
+            self.__objects.add(type(obj))
             return (circular_buffer.get_name(), circular_buffer)
 
 
@@ -35,7 +36,6 @@ class Memory:
          :param obj: Object to look up.
          :return: Tuple (name, CircularBuffer)
          """
-         print(self.__memory_dict)
          if type(obj) in self.__objects:
             for name, circular_buffer in self.__memory_dict.items():
                if circular_buffer.get_obj() == type(obj):
@@ -68,7 +68,6 @@ class Memory:
                raise KeyError(f'No such key entry found {name}, initialize first.')
          else:
             name, circular_buffer = self.lookup_object(obj)
-         self.__objects.add(type(obj))
          return (name, circular_buffer)
 
 
