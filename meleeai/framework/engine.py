@@ -12,7 +12,7 @@ from multiprocessing import Process, Queue
 from meleeai.framework.display import StreamFrame
 from meleeai.framework.manager import Manager
 from meleeai.framework.network.receiver import NetworkReceiver
-from meleeai.memory import get_memory
+from meleeai.memory import Memory
 from meleeai.utils.data_class import ControllerData, SlippiData
 from meleeai.utils.message_type import MessageType
 
@@ -73,11 +73,11 @@ class Engine:
         while True: #(datetime.datetime.utcnow() - start).total_seconds() < 30:
             display_queue_open = self._display_queue_in.qsize() <= self._flags.display_queuesize
             for payload in self._network_receiver.collect():
-                lookup_ret = get_memory().lookup_object(ControllerData)
+                lookup_ret = Memory().lookup_object(ControllerData)
                 #if lookup_ret:
                 #    print(lookup_ret)
                 #    exit(0)
-                print('Engine id ', id(get_memory()))
+                print('Engine id ', id(Memory()))
                 continue
                 message_type, (timestamp, data) = payload
                 # Display
