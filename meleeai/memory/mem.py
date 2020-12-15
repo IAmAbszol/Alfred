@@ -8,15 +8,12 @@ class Memory:
 
    def __init__(self):
       """Singleton instance of the Memory object.
-      :param memory_size: Size to allocate per Circular Buffer.
       """
-      #self._flags          = absl.flags.FLAGS
+      self._flags          = absl.flags.FLAGS
 
-      self.__size          = 1000
+      self.__size          = self._flags.memorysize
       self.__objects       = set()
       self.__memory_dict   = {}
-
-      self._test_dict      = {}
 
 
    def __new__(cls):
@@ -33,14 +30,15 @@ class Memory:
       self._test_dict[x] = 'hello'
       return self._test_dict
 
-   def create(self, obj):
+   def create(self, obj, name=None):
       """Creates a CircularBuffer for the object.
       Will not insert upon creation, use write(...).
       :param obj: Object Circularbuffer should represent.
+      :param name: Name of the SharedMemory to connect to.
       :return: Tuple(name, CircularBuffer)
       """
       if type(obj) not in self.__objects:
-         circular_buffer = CircularBuffer(obj, size=self.__size)
+         circular_buffer = CircularBuffer(obj, shared_memory_name=name, size=self.__size)
          self.__memory_dict[circular_buffer.get_name()] = circular_buffer
          self.__objects.add(type(obj))
          return (circular_buffer.get_name(), circular_buffer)
@@ -85,4 +83,5 @@ class Memory:
             circular_buffer = self.__memory_dict[name]
       else:
          name, circular_buffer = self.lookup_object(obj)
+      circular_buffer.write(obj)
       return (name, circular_buffer)

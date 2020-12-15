@@ -21,23 +21,23 @@ from meleeai.utils.util import getsize
 from meleeai.memory import Memory
 from meleeai.utils.data_class import ControllerData, SlippiData
 
-"""
-    TODO:
-        A.  Recommended: Create list proxy that sends the name of the shared_memory for when namespace.X
-            is true.
-    or
-        B.  Create Video, Controller, Slippi dud objects and put them into the buffer.
 
-"""
 class NetworkReceiver():
     """Network Receiver"""
     def __init__(self):
         """Network receiver class for explicity set ports defined in flags.py.
         """
+        # Initialize the memory singleton
+        self.__memory           = Memory()
+        self._controller_memory_name, self._controller_circular_buffer = \
+            self.__memory.create(obj=ControllerData(MessageType.CONTROLLER, datetime.datetime.utcnow(), {}))
+        self._slippi_memory_name, self._slippi_circular_buffer = \
+            self.__memory.create(obj=SlippiData(MessageType.CONTROLLER, datetime.datetime.utcnow(), {}))
+        
         # Global fields
-        self._flags = absl.flags.FLAGS
+        self._flags             = absl.flags.FLAGS
 
-        self._mp_dict        = {
+        self._mp_dict           = {
             'controller': None,
             'slippi'    : None,
             #'video'     : None
@@ -51,8 +51,6 @@ class NetworkReceiver():
 
         self._namespace         = multiprocessing.Manager().Namespace()
         self._namespace.run     = True
-
-
 
     # Bypass Multiprocessing.Process for pickling
     def __getstate__(self):
@@ -81,6 +79,7 @@ class NetworkReceiver():
         ns = NetworkSender()
         controller_memory_name = None
         while namespace.run:
+            continue
             try:
                 data_str, _         = controller_socket.recvfrom(2048)
                 controller_data     = controller_parser.parse(data_str)
@@ -143,7 +142,6 @@ class NetworkReceiver():
         """
 
     def collect(self):
-        print('collect id ', id(self._namespace.memory))
         for name in self._func_dict:
             if not name in self._mp_dict or self._mp_dict[name] is None:
                 self._mp_dict[name] = multiprocessing.Process(target=self._func_dict[name], args=(self._namespace,))

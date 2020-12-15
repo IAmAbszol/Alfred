@@ -4,8 +4,9 @@ from multiprocessing import shared_memory, Lock
 
 class CircularBuffer:
    """CircularBuffer implementation in Python"""
-   def __init__(self, obj, size=100):
+   def __init__(self, obj, shared_memory_name=None, size=100):
       """Initializes the buffer with size 100 elements.
+      :param shared_memory_name: Name of the shared_memory, if None then create.
       :param size: Size of the buffer.
       """
       assert obj is not None, 'Object cannot be None.'
@@ -19,7 +20,8 @@ class CircularBuffer:
       self.__obj           = type(obj)
       self.__lock          = Lock()
       self.__array         = np.ones(shape=(size), dtype=object)
-      self.__shm_obj       = shared_memory.SharedMemory(create=True, size=self.__array.nbytes)
+      self.__shm_obj       = shared_memory.SharedMemory(create=True, size=self.__array.nbytes) \
+                                 if not shared_memory_name else shared_memory.SharedMemory(name=shared_memory_name, size=self.__array.nbytes)
       self.__buffer        = np.ndarray(shape=(self.__array.shape), buffer=self.__shm_obj.buf, dtype=object)
       self.__buffer[:]     = self.__array[:]
 
