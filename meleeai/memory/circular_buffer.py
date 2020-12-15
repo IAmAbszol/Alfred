@@ -31,6 +31,10 @@ class CircularBuffer:
       self.__shm_obj.unlink()
 
 
+   def __str__(self):
+      return f'Read head {self.__read_head} and Write head {self.__write_head}.'
+
+
    def get_obj(self):
       return self.__obj
 

@@ -1,1 +1,1 @@
-from .mem import Memory
+from .mem import get_memory

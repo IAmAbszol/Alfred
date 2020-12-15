@@ -18,8 +18,10 @@ import json
 import numpy as np
 from copy import deepcopy
 from meleeai.utils.util import getsize
-from meleeai.memory import Memory
+from meleeai.memory import get_memory
+from meleeai.memory.circular_buffer import CircularBuffer
 from meleeai.utils.data_class import ControllerData, SlippiData
+from threading import Thread
 
 
 class NetworkReceiver():
@@ -28,25 +30,18 @@ class NetworkReceiver():
         """Network receiver class for explicity set ports defined in flags.py.
         """
         # Initialize the memory singleton
-        self.__memory           = Memory()
         self._controller_memory_name, self._controller_circular_buffer = \
-            self.__memory.create(obj=ControllerData(MessageType.CONTROLLER, datetime.datetime.utcnow(), {}))
+            get_memory().create(obj=ControllerData(MessageType.CONTROLLER, datetime.datetime.utcnow(), {}))
         self._slippi_memory_name, self._slippi_circular_buffer = \
-            self.__memory.create(obj=SlippiData(MessageType.CONTROLLER, datetime.datetime.utcnow(), {}))
-        
+            get_memory().create(obj=SlippiData(MessageType.CONTROLLER, datetime.datetime.utcnow(), {}))
+
         # Global fields
         self._flags             = absl.flags.FLAGS
 
-        self._mp_dict           = {
-            'controller': None,
-            'slippi'    : None,
-            #'video'     : None
-        }
-
-        self._func_dict         = {
-            'controller': self._listen_controller,
-            'slippi'    : self._listen_slippi,
-            #'video'     : self._listen_video
+        # key -> [function, circular_buffer, process (Defaulted to None)]
+        self._active_functions  = {
+            'controller': [self._listen_controller, self._controller_circular_buffer, None],
+            'slippi': [self._listen_slippi, self._slippi_circular_buffer, None]
         }
 
         self._namespace         = multiprocessing.Manager().Namespace()
@@ -58,7 +53,7 @@ class NetworkReceiver():
         temporary_dictionary['slippi_port'] = temporary_dictionary['_flags'].slippiport
         temporary_dictionary['controller_port'] = temporary_dictionary['_flags'].controllerport
         temporary_dictionary['video_port'] = temporary_dictionary['_flags'].videoport
-        del temporary_dictionary['_mp_dict']
+        del temporary_dictionary['_active_functions']
         del temporary_dictionary['_flags']
         return temporary_dictionary
 
@@ -67,25 +62,24 @@ class NetworkReceiver():
         self.__dict__.update(state)
 
 
-    def _listen_controller(self, namespace):
+    def _listen_controller(self):
         """Listens to the controller socket for any data sent from the Dolphin Emulator
         configured for said adresss & port in flags.
-        :param namespace: Shared object by parent class.
         """
         controller_parser = ControllerParser()
         controller_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        controller_socket.bind(('', self.controller_port))
+        controller_socket.bind(('', self._flags.controllerport))
         controller_socket.settimeout(1)
         ns = NetworkSender()
-        controller_memory_name = None
-        while namespace.run:
-            continue
+        controller_memory = CircularBuffer(obj=ControllerData(MessageType.CONTROLLER, datetime.datetime.utcnow(), {}), \
+                                           shared_memory_name=self._controller_memory_name)
+        while self._namespace.run:
             try:
                 data_str, _         = controller_socket.recvfrom(2048)
                 controller_data     = controller_parser.parse(data_str)
                 if controller_data:
                     timestamp = float(f'{controller_data["timestamp_sec"]}.{controller_data["timestamp_micro"]}')
-                    controller_memory_name, _ = self.memory.write_memory(ControllerData(MessageType.CONTROLLER, datetime.datetime.utcfromtimestamp(timestamp), controller_data), name=controller_memory_name)
+                    self._controller_circular_buffer.write(ControllerData(MessageType.CONTROLLER, datetime.datetime.utcfromtimestamp(timestamp), controller_data))
                     if controller_data['device_number'] == 1:
                         ns.send(bytes(json.dumps(controller_data), encoding='utf-8'))
             except socket.timeout:
@@ -95,23 +89,24 @@ class NetworkReceiver():
         controller_socket.close()
 
 
-    def _listen_slippi(self, namespace):
+    def _listen_slippi(self):
         """Listens to the slippi socket for any data sent from the Dolphin Emulator
         configured for said adresss & port in flags.
-        :param namespace: Shared object by parent class.
         """
         slippi_parser     = SlippiParser()
         slippi_socket     = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        slippi_socket.bind(('', self.slippi_port))
+        slippi_socket.bind(('', self._flags.slippiport))
         slippi_socket.settimeout(1)
-        slippi_memory_name = None
-        while namespace.run:
+        #slippi_memory = CircularBuffer(obj=SlippiData(MessageType.SLIPPI, datetime.datetime.utcnow(), {}), \
+        #                               shared_memory_name=self._slippi_memory_name)
+        while self._namespace.run:
             try:
                 data_str, _         = slippi_socket.recvfrom(1024)
                 events              = slippi_parser.parse_bin(BytesIO(data_str))
                 if events:
                     for timestamp, event in events:
-                        slippi_memory_name, _ = self.memory.write_memory(SlippiData(MessageType.SLIPPI, datetime.datetime.utcfromtimestamp(timestamp), event), name=slippi_memory_name)
+                        self._slippi_memory.write_memory(SlippiData(MessageType.SLIPPI, datetime.datetime.utcfromtimestamp(timestamp), event))
+                    logging.info(events)
             except socket.timeout:
                 logging.warning('Failed to receive any data from slippi socket.')
             except OSError as os_error:
@@ -142,19 +137,23 @@ class NetworkReceiver():
         """
 
     def collect(self):
-        for name in self._func_dict:
-            if not name in self._mp_dict or self._mp_dict[name] is None:
-                self._mp_dict[name] = multiprocessing.Process(target=self._func_dict[name], args=(self._namespace,))
-                self._mp_dict[name].start()
-            if not self._mp_dict[name].is_alive():
-                self._mp_dict[name].join()
-                self._mp_dict[name] = None
-            yield []
+        for name in self._active_functions:
+            if self._active_functions[name][2] is None:
+                self._active_functions[name][2] = Thread(target=self._active_functions[name][0])
+                self._active_functions[name][2].start()
+            if not self._active_functions[name][2].is_alive():
+                self._active_functions[name][2].join()
+                self._active_functions[name][2] = None
+            try:
+                yield self._active_functions[name][1].read()
+            except IndexError as index_error:
+                #logging.error(f'name {name} error {index_error}.')
+                pass
 
     def stop(self):
         logging.info('Stopped Network Receiver, awaiting thread completion.')
         self._namespace.run = False
-        for mp_process in self._mp_dict.values():
-            if mp_process and mp_process.is_alive():
-                mp_process.join()
+        for (_, _, process) in self._active_functions.values():
+            if process and process.is_alive():
+                process.join()
         logging.info('Successfully joined all threads, exiting Network Receiver.')
