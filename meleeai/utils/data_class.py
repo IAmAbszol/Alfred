@@ -28,3 +28,8 @@ class SlippiData(Data):
 
     def __init__(self, message_type, timestamp, data):
         Data.__init__(self, message_type, timestamp, data)
+
+class VideoData(Data):
+
+    def __init__(self, message_type, timestamp, data):
+        Data.__init__(self, message_type, timestamp, data)

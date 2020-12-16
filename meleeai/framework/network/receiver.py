@@ -1,7 +1,6 @@
 import absl.flags
 import datetime
 import logging
-import multiprocessing
 import socket
 import time
 
@@ -39,8 +38,7 @@ class NetworkReceiver():
             'video': [self._listen_video, self._video_circular_buffer, None]
         }
 
-        self._namespace         = multiprocessing.Manager().Namespace()
-        self._namespace.run     = True
+        self._run = True
 
     # Bypass Multiprocessing.Process for pickling
     def __getstate__(self):
@@ -65,7 +63,7 @@ class NetworkReceiver():
         controller_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         controller_socket.bind(('', self._flags.controllerport))
         controller_socket.settimeout(1)
-        while self._namespace.run:
+        while self._run:
             try:
                 data_str, _         = controller_socket.recvfrom(2048)
                 controller_data     = controller_parser.parse(data_str)
@@ -87,7 +85,7 @@ class NetworkReceiver():
         slippi_socket     = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         slippi_socket.bind(('', self._flags.slippiport))
         slippi_socket.settimeout(1)
-        while self._namespace.run:
+        while self._run:
             try:
                 data_str, _         = slippi_socket.recvfrom(1024)
                 events              = slippi_parser.parse_bin(BytesIO(data_str))
@@ -107,7 +105,7 @@ class NetworkReceiver():
         video_socket      = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         video_socket.bind(('', self._flags.videoport))
         video_socket.settimeout(1)
-        while self._namespace.run:
+        while self._run:
             try:
                 data_str, _ = video_socket.recvfrom((2**16) - 1)
                 if video_parser.update(data_str):
@@ -138,7 +136,7 @@ class NetworkReceiver():
 
     def stop(self):
         logging.info('Stopped Network Receiver, awaiting thread completion.')
-        self._namespace.run = False
+        self._run = False
         for (_, _, process) in self._active_functions.values():
             if process and process.is_alive():
                 process.join()
