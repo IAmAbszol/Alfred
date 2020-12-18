@@ -54,7 +54,7 @@ def setup(args):
 
 def verify():
     """Verifies the integrity of the flags set, certain conditions unchecked might lead
-    to Dolphin being explosively written. Add onto these checks for any additional constraints
+    to Dolphin being explosively opened. Add onto these checks for any additional constraints
     added to the system.
     """
     flags = absl.flags.FLAGS
