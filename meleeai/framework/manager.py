@@ -40,8 +40,6 @@ class Manager:
         if self._is_running_offline():
             self._emulator = OfflineExecutor()
 
-        self._sender = NetworkSender()
-
     def __del__(self):
         while self._bucket.qsize():
             self._bucket.get(timeout=.001)

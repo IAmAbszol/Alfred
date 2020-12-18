@@ -129,7 +129,7 @@ class NetworkReceiver():
                 self._active_functions[name][2].join()
                 self._active_functions[name][2] = None
             try:
-                yield self._active_functions[name][1].read()
+                yield self._active_functions[name][1].read()[1]
             except IndexError as index_error:
                 #logging.error(f'name {name} error {index_error}.')
                 pass

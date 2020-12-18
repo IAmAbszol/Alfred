@@ -73,8 +73,7 @@ class Engine:
         while True: #(datetime.datetime.utcnow() - start).total_seconds() < 30:
             display_queue_open = self._display_queue_in.qsize() <= self._flags.display_queuesize
             for payload in self._network_receiver.collect():
-                continue
-                message_type, (timestamp, data) = payload.get()
+                message_type, timestamp, data = payload.get()
                 # Display
                 if self._display:
                     if message_type == MessageType.VIDEO:
