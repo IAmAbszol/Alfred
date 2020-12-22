@@ -6,11 +6,27 @@ import logging
 import os
 import struct
 
+from termcolor import colored
+
 from meleeai.framework.engine import Engine
 from meleeai.utils.flags import create_flags
 
 
-FORMAT = '(%(asctime)s) [%(filename)s:%(lineno)s - %(funcName)20s() ] [%(levelname)s] %(message)s'
+FORMAT = '(%(asctime)s) [%(filename)s:%(lineno)s - %(funcName)20s() ] [%(levelname_colored)s] %(message)s'
+
+COLORS = {
+    'WARNING': 'yellow',
+    'INFO': 'white',
+    'DEBUG': 'grey',
+    'CRITICAL': 'red',
+    'ERROR': 'red'}
+
+_old_factory = logging.getLogRecordFactory()
+def record_factory(*args, **kwargs):
+    record = _old_factory(*args, **kwargs)
+    l = record.levelname
+    record.levelname_colored = colored(l, COLORS.get(l, 'white'))
+    return record
 
 def setup(args):
     """Begins Alfred's processing Engine.
@@ -19,6 +35,7 @@ def setup(args):
         os.makedirs('runtime')
 
     # Setup logging
+    logging.setLogRecordFactory(record_factory)
     logging.basicConfig(
         force=True,
         level=logging.INFO,
@@ -28,6 +45,9 @@ def setup(args):
             logging.StreamHandler()
         ]
     )
+
+    logging.info('TEST1')
+    logging.error('TEST2')
 
     # Verify flags set in place
     verify()
