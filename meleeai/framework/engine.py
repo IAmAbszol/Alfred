@@ -9,9 +9,11 @@ import threading
 
 from multiprocessing import Process, Queue
 
+from meleeai.framework.algorithm.realtime_gym import RealTimeInterface
 from meleeai.framework.display import StreamFrame
 from meleeai.framework.manager import Manager
 from meleeai.framework.network.receiver import NetworkReceiver
+from meleeai.framework.network.sender import NetworkSender
 from meleeai.memory import get_memory
 from meleeai.utils.data_class import ControllerData, SlippiData
 from meleeai.utils.message_type import MessageType
@@ -29,6 +31,7 @@ class Engine:
 
         # Objects used by the engine for network communication
         self._network_receiver  = NetworkReceiver()
+        self._network_sender    = NetworkSender()
 
         # Visual display
         self._display_queue_in  = Queue()
@@ -36,8 +39,11 @@ class Engine:
         self._display_class     = StreamFrame(self._display_queue_in, self._display_queue_out)
         self._display_process   = None
 
-        # Data Manager/Batcher & Algorithm
+        # Data Manager/Batcher
         self._data_manager = Manager()
+
+        # Objects used by the engine for OpenAI Gym
+        self._realtime_interface= RealTimeInterface(self._data_manager.get_published, self._network_sender.send)
 
         self._prediction_engine = None
         self._training_engine   = None
@@ -69,8 +75,7 @@ class Engine:
             self._display_process = Process(target=self._display_class.setup)
             self._display_process.start()
 
-        start = datetime.datetime.utcnow()
-        while True: #(datetime.datetime.utcnow() - start).total_seconds() < 30:
+        while True:
             display_queue_open = self._display_queue_in.qsize() <= self._flags.display_queuesize
             for payload in self._network_receiver.collect():
                 message_type, timestamp, data = payload.get()

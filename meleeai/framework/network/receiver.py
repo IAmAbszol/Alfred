@@ -66,7 +66,7 @@ class NetworkReceiver():
         while self._run:
             try:
                 data_str, _         = controller_socket.recvfrom(2048)
-                controller_data     = controller_parser.parse(data_str)
+                controller_data     = controller_parser.parse_bin(data_str)
                 if controller_data:
                     timestamp = float(f'{controller_data["timestamp_sec"]}.{controller_data["timestamp_micro"]}')
                     self._controller_circular_buffer.write(ControllerData(MessageType.CONTROLLER, datetime.datetime.utcfromtimestamp(timestamp), controller_data))

@@ -9,10 +9,6 @@ import threading
 
 from multiprocessing import Process, Queue
 
-import slippi
-
-from meleeai.utils.util import should_play
-from slippi.game import Game
 
 class AsynchronousFileReader(threading.Thread):
     """Helper class to implement asynchronous reading of a file

@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 
 from multiprocessing import shared_memory, Lock
@@ -9,7 +10,7 @@ class CircularBuffer:
       :param shared_memory_name: Name of the shared_memory, if None then create.
       :param size: Size of the buffer.
       """
-      assert obj is not None, 'Object cannot be None.'
+      assert obj is not None, logging.error('Object cannot be None.')
       self.__size          = size
       self.__read_head     = 0
       self.__write_head    = 0
@@ -68,7 +69,7 @@ class CircularBuffer:
       :param obj: Object to insert into list.
       :return: Integer
       """
-      assert isinstance(obj, self.__obj), f'Expected object of type {self.__obj}, received type {type(obj)}.'
+      assert isinstance(obj, self.__obj), logging.error(f'Expected object of type {self.__obj}, received type {type(obj)}.')
       write_head_index = self.__write_head
 
       self.__has_written = True

@@ -4,6 +4,7 @@ import struct
 import sys
 
 from io import BytesIO
+from PIL import Image
 
 from meleeai.utils.message_type import MessageType
 
@@ -16,7 +17,8 @@ class VideoParser:
         self.HEADER_UNPACK      = struct.Struct(self.HEADER).unpack
         self.MAP_SIZE           = MAX_SIZE
 
-        self._video_data = {}
+        self._video_data        = {}
+        self._video_dimensions  = None
 
     def _concat_image(self, frame_segments):
         """Combines all the frame segments together per image.
@@ -60,7 +62,12 @@ class VideoParser:
         while self._video_data:
             frame, timestamp, _ = self._get_completed_image()
             if frame:
-                completed_images.append((timestamp, self._concat_image(self._video_data[frame])[0]))
+                pil_image = Image.open(BytesIO(self._concat_image(self._video_data[frame])[0]))
+                if self._video_dimensions is None:
+                    self._video_dimensions = pil_image.size
+                if pil_image.size != self._video_dimensions:
+                    pil_image = pil_image.resize(self._video_dimensions)
+                completed_images.append((timestamp, pil_image))
                 self._video_data.pop(frame)
             else:
                 break

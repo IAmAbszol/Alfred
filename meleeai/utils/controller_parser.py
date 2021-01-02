@@ -37,8 +37,16 @@ class ControllerParser:
          'err': err
       }
 
-   def parse(self, data):
+   def parse_bin(self, data):
       """Parses the controller data.
       :param data: Controller data string from the socket.
+      :return: Dictionary
       """
       return self.template(*self.UNPACK_CONTROLLER(data))
+
+   def parse_list(self, data_list):
+      """Parses the list of controller data.
+      :param data_list: 1xN elements, N = # of keys in template.
+      :return: Dictionary
+      """
+      return self.template(*data_list)

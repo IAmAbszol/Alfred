@@ -10,12 +10,8 @@ from meleeai.framework.emulator.offline import OfflineExecutor
 from slippi.event import End, Start, Frame
 
 
-from meleeai.framework.network.sender import NetworkSender
-from meleeai.utils.message_type import MessageType
-import json
-
 class Manager:
-    """Manager"""
+    """Data Manager Class"""
     def __init__(self):
         """Manager class to handle the preparation of training/live data
         """
@@ -25,11 +21,11 @@ class Manager:
         # Emulator object, states, and slippi data
         self._emulator              = None
         self._emulator_state_queue  = Queue()
-        self._emulator_tick        = None
+        self._emulator_tick         = None
 
         # Organized the data coming in
         self._bucket                = Queue()
-        self._published_bucket      = {}
+        self._published_bucket      = []
         self._window_size           = self._flags.prediction_tick_rate
         self._window_start          = None
 
@@ -42,17 +38,17 @@ class Manager:
 
     def __del__(self):
         while self._bucket.qsize():
-            self._bucket.get(timeout=.001)
+            self._bucket.get()
         self._bucket.close()
         self._bucket.join_thread()
 
         while self._emulator_state_queue.qsize():
-            self._emulator_state_queue.get(timeout=.001)
+            self._emulator_state_queue.get()
         self._emulator_state_queue.close()
         self._emulator_state_queue.join_thread()
 
         while self._predictions_queue.qsize():
-            self._predictions_queue.get(timeout=.001)
+            self._predictions_queue.get()
         self._predictions_queue.close()
         self._predictions_queue.join_thread()
 
@@ -66,13 +62,6 @@ class Manager:
             if os.path.exists(self._flags.emulator) and os.path.exists(self._flags.slippi_data):
                 ret = True
         return ret
-
-    def _release_to_train(self):
-        """Retrieves the most recent batch, as a precaution, grab all incase of multiple releases.
-        """
-        while self._published_bucket:
-            # If time-complexity becomes an issue, sack space with linked_list [time] values and time-map
-            yield self._published_bucket.pop(min(self._published_bucket.keys()))
 
     def check_emulator_state(self):
         """Initializes and monitors the emulator if the criteria is met for offline running.
@@ -107,6 +96,12 @@ class Manager:
         self._emulator_state_queue.close()
         self._emulator_state_queue.join_thread()
 
+    def get_published(self):
+        """Returns the current published_bucket.
+        :return: List
+        """
+        return self._published_bucket
+
     def update(self, message_type, data, timestamp):
         """Updates the Manager with the latest data, deploying data if need be
         :param message_type: Type of message associated with this update
@@ -116,22 +111,19 @@ class Manager:
         if self._window_start is None:
             self._window_start = timestamp
         # Timestamp triggers new bucket to be created, previous is published
-        #if (self._window_start + self._window_size) < timestamp:
-        #    self._window_start = timestamp - (timestamp % self._window_size)
-        #while self._bucket.qsize() > 0:
-        #    (message_type, timestamp, payload) = self._bucket.get()
-        #if MessageType.CONTROLLER == message_type and data['device_number'] == 1:
-        #    self._sender.send(bytes(json.dumps(data), encoding='utf-8'))
-            #self._published_bucket[self._window_start] = self._bucket[:]
-            #self._bucket = []
-        #self._bucket.put_nowait((message_type, timestamp, data))
+        if (self._window_start + datetime.timedelta(milliseconds=self._window_size)) < timestamp:
+            self._window_start = timestamp - \
+                datetime.timedelta(((timestamp - datetime.datetime.fromtimestamp(0)).total_seconds() % self._window_size))
+            if self._bucket.qsize() > 0:
+                self._published_bucket.clear()
+            while self._bucket.qsize() > 0:
+                self._published_bucket.append(self._bucket.get())
 
         # POST only comes from players
         if isinstance(data, (Start, End)):
             self._emulator_state_queue.put_nowait(data)
-        elif isinstance(data, Frame):
-            self._emulator_state_queue.put_nowait(data[2])
-
-
-    def retrieve_prediction(self):
-        pass
+        else:
+            if isinstance(data, Frame):
+                self._emulator_state_queue.put_nowait(data[2])
+            # TODO: Message type == Controller, skip?
+            self._bucket.put_nowait((message_type, timestamp, data))

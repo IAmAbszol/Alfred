@@ -21,7 +21,7 @@ class NetworkSender:
         address in flags.py.
         :param state: Class populated Controller instance.
         """
-        assert(isinstance(state, bytes))
+        assert isinstance(state, bytes), logging.error('State must be of type bytes.')
         try:
             self._sending_socket.sendto(state, (self._ip_address, self._port))
         except socket.timeout:

@@ -38,6 +38,7 @@ def setup(args):
     # Setup logging
     logging.setLogRecordFactory(record_factory)
     logging.basicConfig(
+        force=True,
         level=logging.INFO,
         format=FORMAT,
         handlers=[
@@ -61,16 +62,16 @@ def verify():
 
     # Ensure the Melee ISO exists and is infact an iso
     if not flags.live_emulation:
-        assert os.path.exists(flags.melee_iso), 'Missing Melee ISO for offline replay.'
+        assert os.path.exists(flags.melee_iso), logging.error('Missing Melee ISO for offline replay.')
         with open(flags.melee_iso, 'rb') as fd:
             fd.seek(0, 2)
             length = fd.tell()
             fd.seek(0, 0)
             fmt = '<' + 'B'*54
-            assert length > struct.calcsize(fmt), f'File must be of at least length {struct.calcsize(fmt)}, found size to be {length}.'
+            assert length > struct.calcsize(fmt), logging.error(f'File must be of at least length {struct.calcsize(fmt)}, found size to be {length}.')
             header = ''.join([chr(x) for x in struct.unpack(fmt, fd.read(54))])
             assert header == 'GALE01\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00Â3\x9f=Super Smash Bros Melee', \
-                'Melee ISO Header must match GALE01 ...'
+                logging.error('Melee ISO Header must match GALE01 ...')
 
 def main():
     """Entry point for Alfred

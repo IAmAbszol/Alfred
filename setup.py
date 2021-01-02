@@ -36,6 +36,7 @@ setup(
         'gym>=0.17.3',
         'matplotlib>=3.2.1',
         'numpy>=1.18.2',
+        'opencv-python>=4.4.0.46',
         'pillow>=7.1.2',
         'pykalman==0.9.5',
         'py-ubjson>=0.15.0',

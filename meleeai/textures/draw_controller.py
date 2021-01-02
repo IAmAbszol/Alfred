@@ -136,8 +136,8 @@ class ControllerLayout:
         :param target_color: Tuple RGBA for the intended color.
         """
         if texture:
-            assert len(target_color) == 4, 'Target color must have 4 channels, RGBA.'
-            assert len(texture.getpixel((0,0))) == 4, 'Texture must have 4 channels, RGBA'
+            assert len(target_color) == 4, logging.error('Target color must have 4 channels, RGBA.')
+            assert len(texture.getpixel((0,0))) == 4, logging.error('Texture must have 4 channels, RGBA')
             for w in range(texture.width):
                 for h in range(texture.height):
                     r,g,b,a = texture.getpixel((w, h))
@@ -179,7 +179,7 @@ class ControllerLayout:
         :param image_width: Width of the image, width == height
         :param color: Color of the joystick
         """
-        assert isinstance(gate_center, tuple) and len(gate_center) == 2, 'gate_center must be tuple and of length 2, representing X, Y'
+        assert isinstance(gate_center, tuple) and len(gate_center) == 2, logging.error('gate_center must be tuple and of length 2, representing X, Y')
         center_x, center_y      = gate_center
         x, y                    = joystick.x, joystick.y
         vx, vy                  = x, 1 - y
